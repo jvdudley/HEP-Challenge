@@ -7,6 +7,23 @@ from sklearn.preprocessing import StandardScaler
 import pickle
 
 PREDICT_BATCH_SIZE = 2**20
+GPU_ID = -1
+
+from tensorflow import config as tfconfig
+
+gpus = tfconfig.list_physical_devices('GPU')
+if gpus:
+    try:
+        tfconfig.set_visible_devices(gpus[GPU_ID], 'GPU')
+        # Currently, memory growth needs to be the same across GPUs
+        for gpu in gpus:
+            tfconfig.experimental.set_memory_growth(gpu, True)
+        logical_gpus = tfconfig.list_logical_devices('GPU')
+        print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
+    except RuntimeError as e:
+        raise RuntimeError(e) # for now just raise the error and exit
+        # Memory growth must be set before GPUs have been initialized
+        print(e)
 
 class NeuralNetwork:
     """
