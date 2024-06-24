@@ -78,8 +78,8 @@ class StatisticalAnalysis:
         N_obs, _ = np.histogram(score, bins=self.bins, density=False, weights=weight)
                     
         def combined_fit_function_s(x):
+            combined_function_s = np.zeros(self.bins)
             for j in range(len(x)):
-                combined_function_s = np.zeros(self.bins)
                 combined_function_s_bin = np.zeros(self.bins)
                 for i in range(self.bins):
                     combined_function_s_bin[i] = self.fit_function_s[j][i](x[j])
@@ -87,8 +87,8 @@ class StatisticalAnalysis:
             return combined_function_s/len(self.syst_settings.keys())
             
         def combined_fit_function_b(x):
+            combined_function_b = np.zeros(self.bins)
             for j in range(len(x)):
-                combined_function_b = np.zeros(self.bins)
                 combined_function_b_bin = np.zeros(self.bins)
                 for i in range(self.bins):
                     combined_function_b_bin[i] = self.fit_function_b[j][i](x[j])
@@ -241,7 +241,7 @@ class StatisticalAnalysis:
         b_array = np.zeros((len(alpha_list), self.bins))
         
         for i in range(len(alpha_list)):
-            s_array[i], s_array[i] = self.nominal_histograms(alpha_list[i], key)
+            s_array[i], b_array[i] = self.nominal_histograms(alpha_list[i], key)
 
         s_array = s_array.T
         b_array = b_array.T
