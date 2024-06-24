@@ -6,6 +6,7 @@ from tensorflow.keras.models import load_model
 from sklearn.preprocessing import StandardScaler
 import pickle
 
+PREDICT_BATCH_SIZE = 2**20
 
 class NeuralNetwork:
     """
@@ -68,7 +69,7 @@ class NeuralNetwork:
 
         """
         test_data = self.scaler.transform(test_data)
-        return self.model.predict(test_data).flatten().ravel()
+        return self.model.predict(test_data, batch_size=PREDICT_BATCH_SIZE).flatten().ravel()
     
     def save(self, model_name):
         """
