@@ -5,6 +5,7 @@ import os
 import requests
 from zipfile import ZipFile
 
+REMOVE_ENTRY = True
 test_set_settings = None
 
 
@@ -58,6 +59,11 @@ class Data:
             self.input_dir, "train", "detailed_labels", "data.detailed_labels"
         )
 
+        # read train data
+        train_data = pd.read_parquet(train_data_file, engine="pyarrow")
+        if REMOVE_ENTRY:
+            train_data.drop('entry', axis=1, inplace=True, errors='ignore')
+        
         # read train labels
         with open(train_labels_file, "r") as f:
             train_labels = np.array(f.read().splitlines(), dtype=float)
@@ -75,7 +81,7 @@ class Data:
             train_detailed_labels = f.read().splitlines()
 
         self.__train_set = {
-                "data": pd.read_parquet(train_data_file, engine="pyarrow"),
+                "data": train_data,
                 "labels": train_labels,
                 "settings": train_settings,
                 "weights": train_weights,
@@ -113,6 +119,8 @@ class Data:
 
             test_data_path = os.path.join(test_data_dir, f"{key}_data.parquet")
             test_set[key] = pd.read_parquet(test_data_path, engine="pyarrow")
+            if REMOVE_ENTRY:
+                test_set[key].drop('entry', axis=1, inplace=True, errors='ignore')
 
         self.__test_set = test_set
 
