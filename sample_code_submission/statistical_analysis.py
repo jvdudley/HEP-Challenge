@@ -145,6 +145,7 @@ class StatisticalAnalysis:
         mu_p84 = mu_hat  + result.errors['mu']
 
         if plot:
+            print(result)
             result.draw_profile('mu')
             result.draw_mnprofile('mu')
             plt.show()
