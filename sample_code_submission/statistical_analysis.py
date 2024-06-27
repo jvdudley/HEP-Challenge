@@ -5,6 +5,8 @@ import pickle
 from iminuit import Minuit
 import matplotlib.pyplot as plt
 
+NO_SYSTEMATICS = True
+
 path.append("../")
 path.append("../ingestion_program")
 
@@ -138,6 +140,9 @@ class StatisticalAnalysis:
                         )
 
         result.errordef = Minuit.LIKELIHOOD
+        if NO_SYSTEMATICS:
+            result.fixed = True
+            result.fixed['mu'] = False
         result.migrad()
 
         mu_hat = result.values['mu']
