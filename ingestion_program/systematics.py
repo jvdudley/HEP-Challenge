@@ -581,14 +581,15 @@ def get_bootstraped_dataset(
     bkg_norm["htautau"] = int(LHC_NUMBERS["htautau"] * mu)
 
     pseudo_data = []
+    np.random.seed(seed)
     for key in test_set.keys():
-        temp = test_set[key].sample(n=bkg_norm[key], replace=True, random_state=seed)
+        temp = test_set[key].sample(n=np.random.poisson(bkg_norm[key]), replace=True)
 
         pseudo_data.append(temp)
 
     pseudo_data = pd.concat(pseudo_data)
 
-    pseudo_data = pseudo_data.sample(frac=1, random_state=seed).reset_index(drop=True)
+    pseudo_data = pseudo_data.sample(frac=1).reset_index(drop=True)
 
     return pseudo_data
 
