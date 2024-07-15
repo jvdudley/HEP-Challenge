@@ -74,7 +74,7 @@ class NeuralNetwork:
         X_train = self.scaler.transform(train_data)
         self.model.fit(X_train, y_train, sample_weight=weights_train, epochs=2, verbose=2)
 
-    def predict(self, test_data):
+    def predict(self, test_data, batch_size=PREDICT_BATCH_SIZE, verbose='auto'):
         """
         Predicts the output labels for the test data.
 
@@ -86,7 +86,7 @@ class NeuralNetwork:
 
         """
         test_data = self.scaler.transform(test_data)
-        return self.model.predict(test_data, batch_size=PREDICT_BATCH_SIZE).flatten().ravel()
+        return self.model.predict(test_data, batch_size=batch_size, verbose=verbose).flatten().ravel()
     
     def save(self, model_name):
         """
