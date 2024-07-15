@@ -539,10 +539,10 @@ def systematics(
 
 
 LHC_NUMBERS = {
-    "ztautau": 3544019,
-    "diboson": 40590,
-    "ttbar": 158761,
-    "htautau": 3639,
+    "ztautau": 3574068.447, # 3544019,
+    "diboson": 13602.760, # 40590,
+    "ttbar": 159079.907, # 158761,
+    "htautau": 3639.453, # 3639,
 }
 
 
@@ -553,6 +553,8 @@ def get_bootstraped_dataset(
     ttbar_scale=None,
     diboson_scale=None,
     bkg_scale=None,
+    return_labels=False,
+    lhc_frac=1,
 ):
     """
     Generate a bootstraped dataset
@@ -583,8 +585,10 @@ def get_bootstraped_dataset(
     pseudo_data = []
     np.random.seed(seed)
     for key in test_set.keys():
-        temp = test_set[key].sample(n=np.random.poisson(bkg_norm[key]), replace=True)
-
+        temp = test_set[key].sample(n=np.random.poisson(bkg_norm[key] * lhc_frac), replace=True)
+        if return_labels:
+            temp["labels"] = 1. if key == "htautau" else 0.
+            temp["detailed_labels"] = key
         pseudo_data.append(temp)
 
     pseudo_data = pd.concat(pseudo_data)
@@ -599,11 +603,18 @@ def get_systematics_dataset(
     tes=1.0,
     jes=1.0,
     soft_met=0.0,
+    labels=None,
+    detailed_labels=None,
 ):
     weights = np.ones(data.shape[0])
+    data_set = {"data": data, "weights": weights}
+    if labels is not None:
+        data_set["labels"] = labels
+    if detailed_labels is not None:
+        data_set["detailed_labels"] = detailed_labels
 
     data_syst = systematics(
-        data_set={"data": data, "weights": weights},
+        data_set=data_set,
         tes=tes,
         jes=jes,
         soft_met=soft_met,

@@ -136,6 +136,9 @@ class Data:
         diboson_scale=None,
         bkg_scale=None,
         seed=42,
+        return_counts=False,
+        lhc_frac=1,
+
     ):
         from systematics import get_bootstraped_dataset, get_systematics_dataset
 
@@ -147,15 +150,23 @@ class Data:
             diboson_scale=diboson_scale,          
             bkg_scale=bkg_scale,
             seed=seed,
+            return_labels=return_counts,
+            lhc_frac=lhc_frac,
         )
+        labels = pesudo_exp_data.pop("labels") if return_counts else None
+        detailed_labels = pesudo_exp_data.pop("detailed_labels") if return_counts else None
         test_set = get_systematics_dataset(
             pesudo_exp_data,
             tes=tes,
             jes=jes,
             soft_met=soft_met,
+            labels=labels,
+            detailed_labels=detailed_labels,
         )
+        if return_counts:
+            counts = test_set["detailed_labels"].value_counts().to_dict()
 
-        return test_set
+        return (test_set, counts) if return_counts else test_set
 
     def get_train_set(self):
         """
