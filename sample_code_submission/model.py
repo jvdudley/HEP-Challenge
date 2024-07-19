@@ -2,13 +2,19 @@
 # Dummy Sample Submission
 # ------------------------------
 
+STAT_ONLY = False
+
 XGBOOST = False
 TENSORFLOW = True
 TORCH = False
 
-from statistical_analysis import  StatisticalAnalysis
 import numpy as np
 import os
+
+if STAT_ONLY:
+    from stat_only_analysis import StatOnlyAnalysis as StatisticalAnalysis
+else:
+    from statistical_analysis import  StatisticalAnalysis
 
 current_file = os.path.dirname(os.path.abspath(__file__))
 
@@ -188,9 +194,9 @@ class Model:
 
 
         saved_info_file = current_file + "/saved_info_" + self.name + ".pkl"
-        if os.path.exists(saved_info_file):
+        if os.path.exists(saved_info_file) and not STAT_ONLY:
             self.stat_analysis.load(saved_info_file) 
-        else:   
+        elif not STAT_ONLY:   
             self.stat_analysis.calculate_saved_info()
             self.stat_analysis.save(saved_info_file)
 
