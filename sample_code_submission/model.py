@@ -2,7 +2,7 @@
 # Dummy Sample Submission
 # ------------------------------
 
-STAT_ONLY = False
+STAT_ONLY = True
 
 XGBOOST = False
 TENSORFLOW = True
@@ -167,7 +167,7 @@ class Model:
         self.stat_analysis = StatisticalAnalysis(self.model, valid_set)
 
 
-    def fit(self):
+    def fit(self, plot=False):
         """
         Trains the model.
 
@@ -202,7 +202,10 @@ class Model:
 
         train_score = self.model.predict(self.training_set["data"])
         train_results = self.stat_analysis.compute_mu(
-            train_score, self.training_set["weights"],plot=True)
+            train_score,
+            self.training_set["weights"],
+            plot=plot,
+        )
         
         print("Train Results: ")
         for key in train_results.keys():
