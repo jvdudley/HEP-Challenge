@@ -140,10 +140,10 @@ class Data:
         lhc_frac=1,
 
     ):
-        from systematics import get_bootstraped_dataset, get_systematics_dataset
+        from systematics import get_bootstrapped_dataset, get_systematics_dataset
 
         # get bootstrapped dataset from the original test set
-        pesudo_exp_data = get_bootstraped_dataset(
+        pesudo_exp_data = get_bootstrapped_dataset(
             self.__test_set,
             mu=set_mu,
             ttbar_scale=ttbar_scale,
@@ -218,7 +218,8 @@ def Neurips2024_public_dataset():
         FileNotFoundError: If the downloaded dataset file is not found.
         zipfile.BadZipFile: If the downloaded file is not a valid zip file.
     """
-    current_path = os.getcwd()
+    parent_path = os.path.dirname(os.path.realpath(__file__))
+    current_path = os.path.dirname(parent_path)
     public_data_folder_path = os.path.join(current_path, "public_data")
     public_input_data_folder_path = os.path.join(current_path, "public_data", "input_data")
     public_data_zip_path = os.path.join(current_path, "public_data.zip")
@@ -237,7 +238,7 @@ def Neurips2024_public_dataset():
     if not os.path.isfile(public_data_zip_path):
         print("[!] public_data.zip does not exist")
         print("[*] Downloading public data, this may take few minutes")
-        url = "https://www.codabench.org/datasets/download/9c99a23c-f199-405a-b795-b42ea2dd652d/"
+        url = "https://www.codabench.org/datasets/download/15350d30-589f-4e04-b197-0a9c0d186e7a/"
         chunk_size = 1024 * 1024
         response = requests.get(url, stream=True)
         if response.status_code == 200:
@@ -251,6 +252,6 @@ def Neurips2024_public_dataset():
     # Extract public_data.zip
     print("[*] Extracting public_data.zip")
     with ZipFile(public_data_zip_path, 'r') as zip_ref:
-        zip_ref.extractall(current_path)
+        zip_ref.extractall(public_data_folder_path)
 
     return Data(public_input_data_folder_path)

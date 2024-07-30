@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 from sys import path
 from systematics import systematics
@@ -39,9 +41,11 @@ class StatisticalAnalysis:
         save: Save the saved_info dictionary to a file.
         load: Load the saved_info dictionary from a file.
     """
-    def __init__(self,model,holdout_set,bins=10):
+
+    def __init__(self, model, holdout_set, bins=10, stat_only=False):
         self.model = model
         self.bins = bins
+        self.bin_edges = np.linspace(0, 1, bins + 1)
         self.syst_settings = {
             'tes': 1.0,
             'bkg_scale': 1.0,
@@ -50,7 +54,7 @@ class StatisticalAnalysis:
             'ttbar_scale': 1.0,
             'diboson_scale': 1.0,
         }
-        
+
         self.alpha_ranges = {
             "tes": np.linspace(0.9, 1.1, 10),
             "bkg_scale": np.linspace(0.995, 1.005, 10),
@@ -59,13 +63,25 @@ class StatisticalAnalysis:
             "ttbar_scale": np.linspace(0.5, 2.0, 10),
             "diboson_scale": np.linspace(0.5, 2.0, 10),
         }
-            
-        
+
+        # If stat_only is set to True, the systematic parameters will be fixed to the nominal values.
+        self.stat_only = stat_only
+        # If syst_fixed_setting is set, the systematic parameters will be fixed to the given values.
+        self.syst_fixed_setting = {
+            # 'tes': 1.0,
+            'bkg_scale': 1.0,
+            'jes': 1.0,
+            'soft_met': 0.0,
+            'ttbar_scale': 1.0,
+            'diboson_scale': 1.0,
+        }
+
+
         holdout_set["data"].reset_index(drop=True, inplace=True)
-        
+
         self.holdout_set = holdout_set
-        
-    def compute_mu(self,score, weight, plot=False):
+
+    def compute_mu(self, score, weight, plot=None, stat_only: bool = None, syst_fixed_setting: dict[str, float] = None):
         """
         Perform calculations to calculate mu using the profile likelihood method.
         
@@ -73,13 +89,19 @@ class StatisticalAnalysis:
         Args:
             score (numpy.ndarray): Array of scores.
             weight (numpy.ndarray): Array of weights.
-
+            stat_only (bool, optional): Force to compute stats only results [the highest priority]. Defaults to None.
+            syst_fixed_setting (dict, optional): Dictionary containing the systematic settings of whether to fix systematics in fitting. For example, {'jes': 1.5}, fixing 'jet' to 1.5, and the all others floating. Defaults to None.
         Returns:
             dict: Dictionary containing calculated values of mu_hat, delta_mu_hat, p16, and p84.
         """
-        
-        N_obs, _ = np.histogram(score, bins=self.bins, density=False, weights=weight)
-                    
+
+        if stat_only is not None:
+            self.stat_only = stat_only
+        if syst_fixed_setting is not None:
+            self.syst_fixed_setting = syst_fixed_setting
+
+        N_obs, bins = np.histogram(score, bins=self.bin_edges, density=False, weights=weight)
+
         def combined_fit_function_s(x):
             combined_function_s = np.zeros(self.bins)
             for j in range(len(x)):
@@ -87,8 +109,8 @@ class StatisticalAnalysis:
                 for i in range(self.bins):
                     combined_function_s_bin[i] = self.fit_function_s[j][i](x[j])
                 combined_function_s += combined_function_s_bin
-            return combined_function_s/len(self.syst_settings.keys())
-            
+            return combined_function_s / len(self.syst_settings.keys())
+
         def combined_fit_function_b(x):
             combined_function_b = np.zeros(self.bins)
             for j in range(len(x)):
@@ -96,12 +118,11 @@ class StatisticalAnalysis:
                 for i in range(self.bins):
                     combined_function_b_bin[i] = self.fit_function_b[j][i](x[j])
                 combined_function_b += combined_function_b_bin
-            return combined_function_b/len(self.syst_settings.keys())
-            
-        def sigma_asimov(mu,alpha):
-                return mu*combined_fit_function_s(alpha) + combined_fit_function_b(alpha)
+            return combined_function_b / len(self.syst_settings.keys())
 
-        
+        def sigma_asimov(mu, alpha):
+            return mu * combined_fit_function_s(alpha) + combined_fit_function_b(alpha)
+
         def NLL(mu, tes, bkg_scale, jes, soft_met, ttbar_scale, diboson_scale):
             """
             Calculate the negative log-likelihood (NLL) for a given set of parameters.
@@ -123,10 +144,11 @@ class StatisticalAnalysis:
 
             sigma_asimov_mu = sigma_asimov(mu, alpha)
 
-            hist_llr = (
-                - N_obs
-                * np.log((sigma_asimov_mu))
-            ) + (sigma_asimov_mu)
+            # Add a small epsilon to avoid log(0) or very small values
+            epsilon = 1e-10
+            sigma_asimov_mu = np.clip(sigma_asimov_mu, epsilon, None)
+
+            hist_llr = (- N_obs * np.log(sigma_asimov_mu)) + sigma_asimov_mu
 
             return hist_llr.sum()
 
@@ -140,30 +162,56 @@ class StatisticalAnalysis:
                         diboson_scale=1.0,
                         )
 
+        if self.syst_fixed_setting is not None:
+            for key, value in self.syst_fixed_setting.items():
+                result.fixto(key, value)
+                print(f"[*] - Fixed {key} to {value}")
+
+        if self.stat_only:
+            result.fixed = True
+            result.fixed['mu'] = False
+            print("[*] - Fixed all systematics to nominal values.")
+
         result.errordef = Minuit.LIKELIHOOD
         if NO_SYSTEMATICS:
             result.fixed = True
             result.fixed['mu'] = False
         result.migrad()
 
+        if not result.fmin.is_valid:
+            print("Warning: migrad did not converge. Hessian errors might be unreliable.")
+
         mu_hat = result.values['mu']
         mu_p16 = mu_hat - result.errors['mu']
-        mu_p84 = mu_hat  + result.errors['mu']
+        mu_p84 = mu_hat + result.errors['mu']
 
         if plot:
             print(result)
             result.draw_profile('mu')
             result.draw_mnprofile('mu')
             plt.show()
-        
+
+            os.makedirs("plots", exist_ok=True)
+            # alpha_test = [1.0, 1.0, 1.0, 0.0, 1.0, 1.0]
+            alpha_test = [
+                result.values['tes'], result.values['bkg_scale'], result.values['jes'],
+                result.values['soft_met'], result.values['ttbar_scale'], result.values['diboson_scale']
+            ]
+            self.plot_stacked_histogram(
+                bins,
+                combined_fit_function_s(alpha_test),
+                combined_fit_function_b(alpha_test),
+                mu=mu_hat,
+                N_obs=N_obs,
+                save_name=f"plots/{plot}.png"
+            )
+
         return {
             "mu_hat": mu_hat,
-            "delta_mu_hat" : result.errors['mu'] * 2,
+            "delta_mu_hat": result.errors['mu'] * 2,
             "p16": mu_p16,
             "p84": mu_p84,
         }
-        
-
 
     def calculate_saved_info(self):
         """
@@ -180,13 +228,12 @@ class StatisticalAnalysis:
 
         self.saved_info = {}
         for key in self.syst_settings.keys():
-            
             coef_s_list, coef_b_list = self.fit_functions(key)
             self.saved_info[key] = {
                 "coef_s": coef_s_list,
                 "coef_b": coef_b_list,
             }
-                 
+
         self.alpha_function()
 
     def nominal_histograms(self, alpha, key):
@@ -205,7 +252,7 @@ class StatisticalAnalysis:
         syst_settings[key] = alpha
         holdout_syst = systematics(
             self.holdout_set.copy(),
-            tes=syst_settings['tes'],        
+            tes=syst_settings['tes'],
             bkg_scale=syst_settings['bkg_scale'],
             jes=syst_settings['jes'],
             soft_met=syst_settings['soft_met'],
@@ -221,11 +268,13 @@ class StatisticalAnalysis:
         weights_holdout_signal = weights_holdout[label_holdout == 1]
         weights_holdout_background = weights_holdout[label_holdout == 0]
 
-        holdout_signal_hist , _ = np.histogram(holdout_val[label_holdout == 1],
-                    bins=self.bins, density=False, weights=weights_holdout_signal)
-        
-        holdout_background_hist , _ = np.histogram(holdout_val[label_holdout == 0],
-                    bins=self.bins, density=False, weights=weights_holdout_background)
+        holdout_signal_hist, bins_signal = np.histogram(holdout_val[label_holdout == 1],
+                                                        bins=self.bin_edges, density=False,
+                                                        weights=weights_holdout_signal)
+
+        holdout_background_hist, bins_background = np.histogram(holdout_val[label_holdout == 0],
+                                                                bins=self.bin_edges, density=False,
+                                                                weights=weights_holdout_background)
 
         return holdout_signal_hist, holdout_background_hist
 
@@ -243,10 +292,10 @@ class StatisticalAnalysis:
         coef_s_list = []
 
         alpha_list = self.alpha_ranges[key]
-        
+
         s_array = np.zeros((len(alpha_list), self.bins))
         b_array = np.zeros((len(alpha_list), self.bins))
-        
+
         for i in range(len(alpha_list)):
             s_array[i], b_array[i] = self.nominal_histograms(alpha_list[i], key)
 
@@ -259,30 +308,29 @@ class StatisticalAnalysis:
 
             coef_s_list.append(coef_s.tolist())
             coef_b_list.append(coef_b.tolist())
-            
+
         print(f"[*] --- coef_s_list shape: {len(coef_s_list)}")
-        
+
         return coef_s_list, coef_b_list
-       
+
     def alpha_function(self):
-        
+
         self.fit_function_s = [[] for _ in range(len(self.syst_settings.keys()))]
         self.fit_function_b = [[] for _ in range(len(self.syst_settings.keys()))]
-        
+
         for key in self.syst_settings.keys():
-            
+
             coef_s_list = self.saved_info[key]['coef_s']
             coef_b_list = self.saved_info[key]['coef_b']
-            
+
             index = list(self.syst_settings.keys()).index(key)
-            
+
             for i in range(self.bins):
                 coef_s = coef_s_list[i]
                 coef_b = coef_b_list[i]
                 self.fit_function_s[index].append(np.poly1d(coef_s))
                 self.fit_function_b[index].append(np.poly1d(coef_b))
-                
-           
+
     def save(self, file_path):
         """
         Save the saved_info dictionary to a file.
@@ -295,7 +343,7 @@ class StatisticalAnalysis:
         """
         with open(file_path, "wb") as f:
             pickle.dump(self.saved_info, f)
-            
+
     def load(self, file_path):
         """
         Load the saved_info dictionary from a file.
@@ -309,3 +357,38 @@ class StatisticalAnalysis:
         with open(file_path, "rb") as f:
             self.saved_info = pickle.load(f)
         self.alpha_function()
+
+    def plot_stacked_histogram(self, bins, signal_fit, background_fit, mu, N_obs, save_name=None):
+        """
+        Plot a stacked histogram with combined signal and background fits and observed data points.
+
+        Parameters:
+            bins (numpy.ndarray): Bin edges.
+            signal_fit (numpy.ndarray): Combined signal fit values.
+            background_fit (numpy.ndarray): Combined background fit values.
+            N_obs (numpy.ndarray): Observed data points.
+        """
+        plt.figure(figsize=(10, 5))
+
+        bin_centers = 0.5 * (bins[1:] + bins[:-1])
+        bin_widths = np.diff(bins)
+
+        # Plot stacked histograms for signal and background
+        plt.bar(bin_centers, signal_fit, width=bin_widths, color='g', align='center', label='Signal')
+        plt.bar(bin_centers, background_fit, width=bin_widths, alpha=0.5, label='Background', color='b', align='center')
+        plt.bar(bin_centers, signal_fit * mu, width=bin_widths, alpha=0.5, label=f'Signal * {mu:.1f}', color='r',
+                align='center', bottom=background_fit)
+
+        # Plot observed data points
+        plt.errorbar(bin_centers, N_obs, yerr=np.sqrt(N_obs), fmt='o', color='k', label='Observed Data')
+
+        plt.xlabel('Score')
+        plt.ylabel('Counts')
+        plt.yscale('log')  # Set y-axis to logarithmic scale
+        plt.title('Stacked Histogram: Signal and Background Fits with Observed Data')
+        plt.legend()
+
+        # Save the plot
+        if save_name:
+            plt.savefig(save_name)
+        plt.show()
