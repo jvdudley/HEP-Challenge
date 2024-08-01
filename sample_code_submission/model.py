@@ -93,13 +93,22 @@ class Model:
             self.train_set["weights"][self.train_set["labels"] == 0].sum(),
         )
         print(" \n ")
+        def count_duplicates(data, name):
+            count = data.duplicated().sum()
+            assert count == 0, f'{name} has {count} duplicates'
 
+        # self.train_set['data'].reset_index(drop=True, inplace=True)
+        count_duplicates(self.train_set['data'], 'input data')
         # First, split the data into two parts: 1/2 and 1/2
         train_set, temp_set = train_test_split(self.train_set, test_size=0.5, random_state=42)
+        count_duplicates(train_set['data'], 'train data')
+        count_duplicates(temp_set['data'], 'temp data')
 
         # Now split the temp_set into validation and holdout sets (statistical template set) with equal size
         temp_set['data'] = temp_set['data'].reset_index(drop=True)
         valid_set, holdout_set = train_test_split(temp_set, test_size=0.5, random_state=42)
+        count_duplicates(valid_set['data'], 'valid data')
+        count_duplicates(holdout_set['data'], 'holdout data')
 
         self.training_set = train_set
         self.valid_set = valid_set
@@ -207,8 +216,8 @@ class Model:
                 score,
                 data_set["weights"],
                 plot=fig_name,
-                stat_only=stat_only,
-                syst_fixed_setting=syst_settings,
+                # stat_only=stat_only,
+                # syst_fixed_setting=syst_settings,
             )
 
             print(f"{dataset_name} Results:")
@@ -272,8 +281,8 @@ class Model:
         result = self.stat_analysis.compute_mu(
             predictions,
             test_weights,
-            stat_only=stat_only,
-            syst_fixed_setting=syst_settings
+            # stat_only=stat_only,
+            # syst_fixed_setting=syst_settings
         )
 
         print("Test Results: ", result)
@@ -292,13 +301,15 @@ def train_test_split(data_set, test_size=0.2, random_state=42, reweight=False):
     np.random.seed(random_state)
     if isinstance(test_size, float):
         test_number = int(test_size * full_size)
-        random_index = np.random.randint(0, full_size, test_number)
+        # random_index = np.random.randint(0, full_size, test_number)
     elif isinstance(test_size, int):
-        random_index = np.random.randint(0, full_size, test_size)
+        test_number = test_size
+        # random_index = np.random.randint(0, full_size, test_size)
     else:
         raise ValueError("test_size should be either float or int")
 
     full_range = data.index
+    random_index = np.random.choice(full_range, test_number, replace=False)
     remaining_index = full_range[np.isin(full_range, random_index, invert=True)]
     remaining_index = np.array(remaining_index)
 
