@@ -8,6 +8,8 @@ from zipfile import ZipFile
 REMOVE_ENTRY = True
 test_set_settings = None
 
+PUBLIC_DATA_URL = "https://www.codabench.org/datasets/download/d81b6937-3ad5-45a2-b8d9-b78b2e7879d1/"
+
 
 class Data:
     """
@@ -24,7 +26,7 @@ class Data:
     Methods:
     load_train_set(): Loads the train dataset.
     load_test_set(): Loads the test dataset.
-    generate_psuedo_exp_data(): Generates pseudo experimental data.
+    generate_pseudo_exp_data(): Generates pseudo experimental data.
     get_train_set(): Returns the train dataset.
     get_test_set(): Returns the test dataset.
     delete_train_set(): Deletes the train dataset.
@@ -126,7 +128,7 @@ class Data:
 
         print("[+] Test data loaded successfully")
 
-    def generate_psuedo_exp_data(
+    def generate_pseudo_exp_data(
         self,
         set_mu=1,
         tes=1.0,
@@ -238,9 +240,8 @@ def Neurips2024_public_dataset():
     if not os.path.isfile(public_data_zip_path):
         print("[!] public_data.zip does not exist")
         print("[*] Downloading public data, this may take few minutes")
-        url = "https://www.codabench.org/datasets/download/15350d30-589f-4e04-b197-0a9c0d186e7a/"
         chunk_size = 1024 * 1024
-        response = requests.get(url, stream=True)
+        response = requests.get(PUBLIC_DATA_URL, stream=True)
         if response.status_code == 200:
             with open(public_data_zip_path, 'wb') as file:
                 # Iterate over the response in chunks
