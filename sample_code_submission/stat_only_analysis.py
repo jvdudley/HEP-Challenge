@@ -29,7 +29,7 @@ class StatOnlyAnalysis:
         compute_mu: Perform calculations to calculate mu.
         nominal_histograms: Calculate the nominal histograms for signal and background events.
     """
-    def __init__(self, model, holdout_set, bins=None, range=(0, 1)):
+    def __init__(self, model, holdout_set, bins=None, range=(0, 1), stat_only=None):
         self.model = model
         self.bins = bins
         self.range = range
@@ -39,6 +39,7 @@ class StatOnlyAnalysis:
         self.background_hist = None
         self.signal_variance = None
         self.background_variance = None
+        # stat_only argument is only there for compatibility with the old code
     
     def nominal_histograms(self, bins=None):
         """
@@ -133,44 +134,58 @@ class StatOnlyAnalysis:
         p16 = mu_values[NLL_diff < .5][0]
         p84 = mu_values[NLL_diff < .5][-1]
         if plot:
+            # plot histograms
+            plt.stairs(
+                self.signal_hist,
+                self.bin_edges,
+                fill=True,
+                label='Signal',
+            )
+            plt.stairs(
+                self.background_hist,
+                self.bin_edges,
+                baseline=self.signal_hist,
+                fill=True,
+                label='Background',
+            )
+            plt.stairs(
+                observed_hist,
+                self.bin_edges,
+                label='Observed',
+            )
+            plt.legend()
+            plt.title(plot + ': histograms')
+            plt.show()
+            # plot NLL
             plt.axhline(.5, color='r', linestyle='--')
             plt.axvspan(p16, p84, color='grey', alpha=.25, label=f'{p16:.2f} - {p84:.2f}')
             plt.axvline(mu_hat, color='C1', linestyle='--', label=f'mu_hat: {mu_hat:.2f}')
             plt.plot(mu_values, NLL_diff)
             plt.xlabel(r'$\mu$')
             plt.ylabel(r'$\Delta$NLL')
+            plt.title(plot + ': NLL')
             plt.legend()
             plt.show()
         return (mu_hat, p16, p84)
 
-    def compute_mu(self, scores, weights, mu_range=None, epsilon=None, plot=False):
+    def compute_mu(self, scores, weights, mu_range=None, epsilon=None, plot=None):
         """
         Perform calculations to compute mu
 
         Args:
             scores (numpy.ndarray): Array of scores.
             weights (numpy.ndarray): Array of weights.
-            plot (bool, optional): Whether to plot the profile likelihood. Defaults to False.
+            plot (str, optional): Plot title. If None, do not plot. Defaults to None.
         
         Returns:
             dict: Dictionary containing calculated values of mu_hat, delta_mu_hat, p16, and p84.
         """
         if mu_range is None:
             mu_range = (0, 4)
-        mu_hat, p16, p84 = self.estimate_mu(scores, weights, mu_range=mu_range, mu_steps=1000, epsilon=epsilon, plot=plot)
+        mu_hat, p16, p84 = self.estimate_mu(scores, weights, mu_range=mu_range, mu_steps=10**4, epsilon=epsilon, plot=f'{plot}: mu initial')
         delta_mu_hat = p84 - p16
         mu_range = (mu_hat - delta_mu_hat, mu_hat + delta_mu_hat)
-        if plot:
-            plt.hist(
-                [self.bin_edges[:-1],] * 2, # one each for sig and bkg
-                self.bin_edges,
-                weights=[self.background_hist, self.signal_hist],
-                histtype='barstacked',
-                label=['Background', 'Signal'],
-            )
-            plt.legend()
-            plt.show()
-        mu_hat, p16, p84 = self.estimate_mu(scores, weights, mu_range=mu_range, mu_steps=10**4, epsilon=epsilon, plot=plot)
+        # mu_hat, p16, p84 = self.estimate_mu(scores, weights, mu_range=mu_range, mu_steps=10**4, epsilon=epsilon, plot=f'{plot}: mu final')
         return {
             'mu_hat': mu_hat,
             'delta_mu_hat': p84 - p16,
