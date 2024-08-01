@@ -41,7 +41,7 @@ class StatOnlyAnalysis:
         self.background_variance = None
         # stat_only argument is only there for compatibility with the old code
     
-    def nominal_histograms(self, bins=None):
+    def nominal_histograms(self, bins=None, apply_syst=False):
         """
         Calculate the nominal histograms for signal and background events.
 
@@ -57,8 +57,8 @@ class StatOnlyAnalysis:
             # TMP: use 2000 bins for now
             self.bins = 2000
         self.bin_edges = np.linspace(*self.range, self.bins + 1)
-        # make postselection cuts
-        holdout_syst = systematics(self.holdout_set.copy())
+        # apply systematics
+        holdout_syst = systematics(self.holdout_set.copy()) if apply_syst else self.holdout_set.copy()
         # compute scores
         holdout_scores = self.model.predict(holdout_syst['data'])
         # compute histograms

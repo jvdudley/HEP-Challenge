@@ -235,6 +235,8 @@ class Model:
 
         for name, dataset, plot_name in datasets:
             predict_and_analyze(name, dataset, plot_name, stat_only=stat_only, syst_settings=syst_settings)
+        # compute template histograms with cuts
+        self.stat_analysis.nominal_histograms(apply_syst=True)
 
     def balance_set(self):
         balanced_set = self.training_set.copy()
