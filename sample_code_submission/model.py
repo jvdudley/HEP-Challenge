@@ -290,7 +290,7 @@ class Model:
         return result
 
 
-def train_test_split(data_set, test_size=0.2, random_state=42, reweight=False):
+def train_test_split(data_set, test_size=0.2, random_state=42, reweight=True):
     data = data_set["data"].copy()
     train_set = {}
     test_set = {}
