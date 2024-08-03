@@ -561,6 +561,8 @@ def get_bootstrapped_dataset(
     diboson_scale=None,
     bkg_scale=None,
     poisson=True,
+    return_labels=False,
+    lhc_frac=1,
 ):
     """
     Generate a bootstrapped dataset
@@ -601,13 +603,17 @@ def get_bootstrapped_dataset(
 
         if poisson:
             random_state = np.random.RandomState(seed=Seed)
-            new_weights = random_state.poisson(bkg_norm[key] * test_set[key]["weights"])
+            new_weights = random_state.poisson(bkg_norm[key] * test_set[key]["weights"] * lhc_frac)
         else:
-            new_weights = bkg_norm[key] * test_set[key]["weights"]
+            new_weights = bkg_norm[key] * test_set[key]["weights"] * lhc_frac
 
         temp_data = test_set[key][new_weights > 0]
 
         temp_data["weights"] = new_weights[new_weights > 0]
+
+        if return_labels:
+            temp_data["labels"] = 1. if key == 'htautau' else 0.
+            temp_data["detailed_labels"] = key
 
         pseudo_data.append(temp_data)
 
