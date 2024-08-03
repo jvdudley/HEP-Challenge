@@ -4,6 +4,7 @@ from systematics import systematics
 import pickle
 from iminuit import Minuit
 import matplotlib.pyplot as plt
+from tqdm import tqdm
 
 
 path.append("../")
@@ -58,7 +59,7 @@ class StatOnlyAnalysis:
             self.bins = 2000
         self.bin_edges = np.linspace(*self.range, self.bins + 1)
         # apply systematics
-        holdout_syst = systematics(self.holdout_set.copy()) if apply_syst else self.holdout_set.copy()
+        holdout_syst = systematics(self.holdout_set) if apply_syst else self.holdout_set.copy()
         # compute scores
         holdout_scores = self.model.predict(holdout_syst['data'])
         # compute histograms
@@ -94,10 +95,49 @@ class StatOnlyAnalysis:
         return np.histogram(scores, self.bin_edges, weights=weights**2)[0]
 
 
-    def determine_hist_bins(self, min_count=1):
+    def vary_hist_bins(self, bins_iter=None, data_set=None, apply_syst=False, mu_true=None, plot_title=None):
         """
-        Compute histograms and adjust the number of bins as needed.
+        Compute histograms for each number of bins given in bins_iter.
         """
+        if bins_iter is None:
+            bins_iter = (2**j for j in range(11))
+        if data_set is None:
+            data_set = self.holdout_set
+            print('Using template set, ie fitting to itself.')
+        if apply_syst:
+            data_set = systematics(data_set)
+        # compute scores
+        scores = self.model.predict(data_set['data'])
+        # loop over bins_iter
+        results = []
+        for bins in tqdm(bins_iter):
+            self.bins = bins
+            self.nominal_histograms(apply_syst=apply_syst)
+            results.append({
+                'bins': bins,
+                'prediction': self.compute_mu(scores, data_set['weights'])
+            })
+        # this should be changed to a weighted average using the variance
+        mu_mean = np.mean([result['prediction']['mu_hat'] for result in results])
+        mu_std = np.std([result['prediction']['mu_hat'] for result in results])
+        mu_stderr = mu_std / np.sqrt(len(results))
+        if plot_title is not None:
+            plt.errorbar(
+                [result['prediction']['mu_hat'] for result in results],
+                [result['bins'] for result in results],
+                xerr=[result['prediction']['delta_mu_hat'] / 2 for result in results],
+                fmt='.',
+            )
+            if mu_true is not None:
+                plt.axvline(mu_true, color='black', label=f'true $\mu$: {mu_true:.2f}')
+            # plt.axvline(mu_mean, color='r', label=f'mean $\mu$: {mu_mean:.2f}')
+            # plt.axvspan(mu_mean - mu_stderr, mu_mean + mu_stderr, color='r', alpha=.25, label=f'stderr: {mu_stderr:.2f}')
+            plt.xlabel(r'$\mu$')
+            plt.ylabel('bins')
+            plt.yscale('log')
+            plt.title(plot_title)
+            plt.show()
+        return results
     
     def estimate_mu(self, scores, weights, mu_range=None, mu_steps=None, epsilon=None, plot=False):
         """
@@ -182,7 +222,7 @@ class StatOnlyAnalysis:
         """
         if mu_range is None:
             mu_range = (0, 4)
-        mu_hat, p16, p84 = self.estimate_mu(scores, weights, mu_range=mu_range, mu_steps=10**4, epsilon=epsilon, plot=f'{plot}: mu initial')
+        mu_hat, p16, p84 = self.estimate_mu(scores, weights, mu_range=mu_range, mu_steps=10**4, epsilon=epsilon, plot=plot)
         delta_mu_hat = p84 - p16
         mu_range = (mu_hat - delta_mu_hat, mu_hat + delta_mu_hat)
         # mu_hat, p16, p84 = self.estimate_mu(scores, weights, mu_range=mu_range, mu_steps=10**4, epsilon=epsilon, plot=f'{plot}: mu final')
