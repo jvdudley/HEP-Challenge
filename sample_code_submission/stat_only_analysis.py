@@ -36,6 +36,8 @@ class StatOnlyAnalysis:
         self.range = range
         self.bin_edges = None
         self.holdout_set = holdout_set
+        self.holdout_syst_applied = None
+        self.holdout_scores = None
         self.signal_hist = None
         self.background_hist = None
         self.signal_variance = None
@@ -58,29 +60,34 @@ class StatOnlyAnalysis:
             # TMP: use 2000 bins for now
             self.bins = 2000
         self.bin_edges = np.linspace(*self.range, self.bins + 1)
-        # apply systematics
-        holdout_syst = systematics(self.holdout_set) if apply_syst else self.holdout_set.copy()
+        # determine if scores need to be computed
+        if apply_syst != self.holdout_syst_applied:
+            self.holdout_scores = None
+            self.holdout_syst_applied = apply_syst
         # compute scores
-        holdout_scores = self.model.predict(holdout_syst['data'])
+        if self.holdout_scores is None:
+            # apply systematics
+            holdout_syst = systematics(self.holdout_set) if apply_syst else self.holdout_set
+            self.holdout_scores = self.model.predict(holdout_syst['data'])
         # compute histograms
         self.signal_hist, _ = np.histogram(
-            holdout_scores[holdout_syst['labels'] == 1],
+            self.holdout_scores[holdout_syst['labels'] == 1],
             bins=self.bin_edges,
             weights=holdout_syst['weights'][holdout_syst['labels'] == 1],
         )
         self.background_hist, _ = np.histogram(
-            holdout_scores[holdout_syst['labels'] == 0],
+            self.holdout_scores[holdout_syst['labels'] == 0],
             bins=self.bin_edges,
             weights=holdout_syst['weights'][holdout_syst['labels'] == 0],
         )
         # compute variances
         self.signal_variance, _ = np.histogram(
-            holdout_scores[holdout_syst['labels'] == 1],
+            self.holdout_scores[holdout_syst['labels'] == 1],
             self.bin_edges,
             weights=holdout_syst['weights'][holdout_syst['labels'] == 1]**2,
         )
         self.background_variance, _ = np.histogram(
-            holdout_scores[holdout_syst['labels'] == 0],
+            self.holdout_scores[holdout_syst['labels'] == 0],
             self.bin_edges,
             weights=holdout_syst['weights'][holdout_syst['labels'] == 0]**2,
         )
@@ -106,6 +113,7 @@ class StatOnlyAnalysis:
             print('Using template set, ie fitting to itself.')
         if apply_syst:
             data_set = systematics(data_set)
+        self.holdout_scores = None
         # compute scores
         scores = self.model.predict(data_set['data'])
         # loop over bins_iter
