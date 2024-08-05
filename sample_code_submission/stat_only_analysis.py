@@ -107,7 +107,7 @@ class StatOnlyAnalysis:
         Compute histograms for each number of bins given in bins_iter.
         """
         if bins_iter is None:
-            bins_iter = (2**j for j in range(11))
+            bins_iter = tqdm((2**j for j in range(11)), total=11)
         if data_set is None:
             data_set = self.holdout_set
             print('Using template set, ie fitting to itself.')
@@ -118,7 +118,7 @@ class StatOnlyAnalysis:
         scores = self.model.predict(data_set['data'])
         # loop over bins_iter
         results = []
-        for bins in tqdm(bins_iter):
+        for bins in bins_iter:
             self.bins = bins
             self.nominal_histograms(apply_syst=apply_syst)
             results.append({
