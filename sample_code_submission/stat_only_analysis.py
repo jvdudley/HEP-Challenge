@@ -37,7 +37,7 @@ class StatOnlyAnalysis:
         self.bin_edges = None
         self.holdout_set = holdout_set
         self.holdout_syst_applied = None
-        self.holdout_scores = None
+        # self.holdout_scores = None
         self.signal_hist = None
         self.background_hist = None
         self.signal_variance = None
@@ -58,38 +58,42 @@ class StatOnlyAnalysis:
         # if bins is None, should compute optimal number of bins
         if self.bins is None:
             # TMP: use 2000 bins for now
-            self.bins = 2000
+            # after some tests with the full test set, 128 seemed to be the best
+            self.bins = 128
         self.bin_edges = np.linspace(*self.range, self.bins + 1)
         # determine if scores need to be computed
         if apply_syst != self.holdout_syst_applied:
-            self.holdout_scores = None
             self.holdout_syst_applied = apply_syst
-        # compute scores
-        if self.holdout_scores is None:
             # apply systematics
             holdout_syst = systematics(self.holdout_set) if apply_syst else self.holdout_set
-            self.holdout_scores = self.model.predict(holdout_syst['data'])
+            # compute scores
+            holdout_scores = self.model.predict(holdout_syst['data'])
+            self.signal_scores = holdout_scores[holdout_syst['labels'] == 1]
+            self.background_scores = holdout_scores[holdout_syst['labels'] == 0]
+            self.signal_weights = holdout_syst['weights'][holdout_syst['labels'] == 1]
+            self.background_weights = holdout_syst['weights'][holdout_syst['labels'] == 0]
+
         # compute histograms
         self.signal_hist, _ = np.histogram(
-            self.holdout_scores[holdout_syst['labels'] == 1],
+            self.signal_scores,
             bins=self.bin_edges,
-            weights=holdout_syst['weights'][holdout_syst['labels'] == 1],
+            weights=self.signal_weights,
         )
         self.background_hist, _ = np.histogram(
-            self.holdout_scores[holdout_syst['labels'] == 0],
+            self.background_scores,
             bins=self.bin_edges,
-            weights=holdout_syst['weights'][holdout_syst['labels'] == 0],
+            weights=self.background_weights,
         )
         # compute variances
         self.signal_variance, _ = np.histogram(
-            self.holdout_scores[holdout_syst['labels'] == 1],
-            self.bin_edges,
-            weights=holdout_syst['weights'][holdout_syst['labels'] == 1]**2,
+            self.signal_scores,
+            bins=self.bin_edges,
+            weights=self.signal_weights**2,
         )
         self.background_variance, _ = np.histogram(
-            self.holdout_scores[holdout_syst['labels'] == 0],
-            self.bin_edges,
-            weights=holdout_syst['weights'][holdout_syst['labels'] == 0]**2,
+            self.background_scores,
+            bins=self.bin_edges,
+            weights=self.background_weights**2,
         )
 
         # consider returning whether or not there are too many bins
