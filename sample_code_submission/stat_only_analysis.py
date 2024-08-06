@@ -151,18 +151,20 @@ class StatOnlyAnalysis:
             plt.show()
         return results
     
-    def estimate_mu(self, scores, weights, mu_range=None, mu_steps=None, epsilon=None, plot=False):
+    def estimate_mu(self, scores, weights=None, mu_range=None, mu_steps=None, epsilon=None, plot=False):
         """
         Estimate mu by scanning the likelihood.
         """
+        if weights is None:
+            weights = np.ones_like(scores)
+        if epsilon is None:
+            epsilon = np.spacing(np.zeros_like(weights[0]))
         def NLL(mu, observed, expected_signal, expected_background, epsilon=epsilon):
             """
             Negative log likelihood function.
             """
-            expected = mu * expected_signal + expected_background
-            if epsilon is None:
-                epsilon = np.spacing(np.zeros_like(expected[0]))
-            return np.sum(expected - observed * np.log(expected + epsilon))
+            expected = mu[:, None] * expected_signal + expected_background
+            return np.sum(expected - observed * np.log(expected + epsilon), axis=1)
         
         if mu_range is None:
             mu_range = (0, 3)
@@ -175,10 +177,11 @@ class StatOnlyAnalysis:
         # compute observed histogram
         observed_hist, _ = np.histogram(scores, bins=self.bin_edges, weights=weights)
         # compute negative log likelihoods
-        NLL_values = [
-            NLL(mu, observed_hist, self.signal_hist, self.background_hist)
-            for mu in mu_values
-        ]
+        NLL_values = NLL(mu_values, observed_hist, self.signal_hist, self.background_hist)
+        # [
+        #     NLL(mu, ...)
+        #     for mu in mu_values
+        # ]
         NLL_min = np.min(NLL_values)
         NLL_diff = NLL_values - NLL_min
         # compute mu_hat
@@ -220,7 +223,7 @@ class StatOnlyAnalysis:
             plt.show()
         return (mu_hat, p16, p84)
 
-    def compute_mu(self, scores, weights, mu_range=None, epsilon=None, plot=None):
+    def compute_mu(self, scores, weights=None, mu_range=None, epsilon=None, plot=None):
         """
         Perform calculations to compute mu
 
@@ -232,6 +235,8 @@ class StatOnlyAnalysis:
         Returns:
             dict: Dictionary containing calculated values of mu_hat, delta_mu_hat, p16, and p84.
         """
+        if weights is None:
+            weights = np.ones_like(scores)
         if mu_range is None:
             mu_range = (0, 4)
         mu_hat, p16, p84 = self.estimate_mu(scores, weights, mu_range=mu_range, mu_steps=10**4, epsilon=epsilon, plot=plot)
