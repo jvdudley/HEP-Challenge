@@ -79,10 +79,10 @@ class Model:
         )
         self.systematics = systematics
 
+        del self.train_set["settings"]
+
         # compute derived features. also applies cuts.
         self.train_set = systematics(train_set)
-
-        del self.train_set["settings"]
 
         print("Full data: ", self.train_set["data"].shape)
         print("Full Labels: ", self.train_set["labels"].shape)
