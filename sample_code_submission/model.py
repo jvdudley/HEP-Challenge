@@ -74,10 +74,13 @@ class Model:
         Returns:
             None
         """
-        self.train_set = (
+        train_set = (
             get_train_set  # train_set is a dictionary with data, labels and weights
         )
         self.systematics = systematics
+
+        # compute derived features. also applies cuts.
+        self.train_set = systematics(train_set)
 
         del self.train_set["settings"]
 
