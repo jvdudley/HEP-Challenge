@@ -82,6 +82,7 @@ class Model:
         del self.train_set["settings"]
 
         # compute derived features. also applies cuts.
+        # consider moving this to after the data is split to reduce peak memory use
         self.train_set = systematics(self.train_set)
 
         print("Full data: ", self.train_set["data"].shape)
@@ -313,7 +314,7 @@ def train_test_split(data_set, test_size=0.2, random_state=42, reweight=True):
     else:
         raise ValueError("test_size should be either float or int")
 
-    full_range = data.index
+    full_range = np.arange(full_size) # data.index
     random_index = np.random.choice(full_range, test_number, replace=False)
     remaining_index = full_range[np.isin(full_range, random_index, invert=True)]
     remaining_index = np.array(remaining_index)
