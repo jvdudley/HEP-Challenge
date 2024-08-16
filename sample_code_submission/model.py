@@ -75,6 +75,7 @@ class Model:
             None
         """
         self.train_set = (
+            # master has been updated so that get_train_set is a callable, not a dictionary
             get_train_set  # train_set is a dictionary with data, labels and weights
         )
         self.systematics = systematics
