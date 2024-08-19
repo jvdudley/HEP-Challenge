@@ -158,7 +158,7 @@ class StatOnlyAnalysis:
         if weights is None:
             weights = np.ones_like(scores)
         if epsilon is None:
-            epsilon = np.spacing(np.zeros_like(weights[0]))
+            epsilon = np.spacing(np.zeros_like(weights[:1])[0])
         def NLL(mu, observed, expected_signal, expected_background, epsilon=epsilon):
             """
             Negative log likelihood function.
