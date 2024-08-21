@@ -57,7 +57,7 @@ def _init_worker(using_tensorflow, pickled_model, device_queue):
 
 _model = None
 
-def _generate_pseudo_exp_data(data, set_mu=1, tes=1.0, jes=1.0, soft_met=1.0, ttbar_scale=None, diboson_scale=None, bkg_scale=None, seed=0):
+def _generate_pseudo_exp_data(data, set_mu=1, tes=1.0, jes=1.0, soft_met=0.0, ttbar_scale=None, diboson_scale=None, bkg_scale=None, seed=0):
 
         from systematics import get_bootstrapped_dataset, get_systematics_dataset
 
@@ -100,30 +100,30 @@ def _process_combination(arrays, test_settings, initial_seed, combination):
             random_state = np.random.RandomState(seed)
 
             if dict_systematics["tes"]:
-                tes = random_state.uniform(0.9, 1.1)
+                tes = np.clip(random_state.normal(loc=1.0, scale=0.001), a_min=0.99, a_max=1.01)
             else:
                 tes = 1.0
             if dict_systematics["jes"]:
-                jes = random_state.uniform(0.9, 1.1)
+                jes = np.clip(random_state.normal(loc=1.0, scale=0.001), a_min=0.99, a_max=1.01)
             else:
                 jes = 1.0
             if dict_systematics["soft_met"]:
-                soft_met = random_state.uniform(0.0, 5)
+                soft_met = np.clip(random_state.lognormal(mean=0.0, sigma=1.0), a_min=0.0, a_max=5.0)
             else:
                 soft_met = 0.0
 
             if dict_systematics["ttbar_scale"]:
-                ttbar_scale = random_state.uniform(0.5, 2)
+                ttbar_scale = np.clip(random_state.normal(loc=1.0, scale=0.02), a_min=0.8, a_max=1.2)
             else:
                 ttbar_scale = None
 
             if dict_systematics["diboson_scale"]:
-                diboson_scale = random_state.uniform(0.5, 2)
+                diboson_scale = np.clip(random_state.normal(loc=1.0, scale=0.25), a_min=0.0, a_max=2.0)
             else:
                 diboson_scale = None
 
             if dict_systematics["bkg_scale"]:
-                bkg_scale = random_state.uniform(0.995, 1.005)
+                bkg_scale = np.clip(random_state.normal(loc=1.0, scale=0.001), a_min=0.99, a_max=1.01)
             else:
                 bkg_scale = None
 
@@ -272,23 +272,23 @@ class Ingestion:
         data (object): The data object.
 
     Attributes:
-        start_time (datetime): The start time of the ingestion process.
-        end_time (datetime): The end time of the ingestion process.
-        model (object): The model object.
-        data (object): The data object.
+        * start_time (datetime): The start time of the ingestion process.
+        * end_time (datetime): The end time of the ingestion process.
+        * model (object): The model object.
+        * data (object): The data object.
 
     Methods:
-        start_timer: Start the timer for the ingestion process.
-        stop_timer: Stop the timer for the ingestion process.
-        get_duration: Get the duration of the ingestion process.
-        show_duration: Display the duration of the ingestion process.
-        save_duration: Save the duration of the ingestion process to a file.
-        load_train_set: Load the training set.
-        init_submission: Initialize the submitted model.
-        fit_submission: Fit the submitted model.
-        predict_submission: Make predictions using the submitted model.
-        compute_result: Compute the ingestion result.
-        save_result: Save the ingestion result to a file.
+        * start_timer: Start the timer for the ingestion process.
+        * stop_timer: Stop the timer for the ingestion process.
+        * get_duration: Get the duration of the ingestion process.
+        * show_duration: Display the duration of the ingestion process.
+        * save_duration: Save the duration of the ingestion process to a file.
+        * load_train_set: Load the training set.
+        * init_submission: Initialize the submitted model.
+        * fit_submission: Fit the submitted model.
+        * predict_submission: Make predictions using the submitted model.
+        * compute_result: Compute the ingestion result.
+        * save_result: Save the ingestion result to a file.
     """
     def __init__(self, data=None):
         """
@@ -375,7 +375,7 @@ class Ingestion:
             systematics,
         )
 
-        self.model = Model(get_train_set=self.load_train_set(), systematics=systematics)
+        self.model = Model(get_train_set=self.load_train_set, systematics=systematics)
         self.data.delete_train_set()
 
     def fit_submission(self):
@@ -414,6 +414,7 @@ class Ingestion:
         using_tensorflow = "tensorflow" in sys.modules
 
         test_set = self.data.get_test_set()
+        del self.data
 
         with SharedTestSet(test_set=test_set) as test_set:
             mp_context = mp.get_context("spawn")

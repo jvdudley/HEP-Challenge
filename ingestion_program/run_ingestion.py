@@ -118,7 +118,7 @@ if __name__ == "__main__":
         submission_dir = args.submission
         program_dir = os.path.join(root_dir_name, "ingestion_program")
     else:
-        input_dir = "/app/input_data"
+        input_dir = "/app/data"
         output_dir = "/app/output"
         submission_dir = "/app/ingested_program"
         program_dir = "/app/program"
@@ -132,6 +132,11 @@ if __name__ == "__main__":
 
     sys.path.append(program_dir)
     sys.path.append(submission_dir)
+
+    for subdir in os.listdir(submission_dir):
+        sub_directory_path = os.path.join(submission_dir, subdir)
+        if os.path.isdir(sub_directory_path) and not subdir.startswith("__"):
+                sys.path.append(sub_directory_path)
 
     from model import Model
 
@@ -157,6 +162,9 @@ if __name__ == "__main__":
     test_settings["num_pseudo_experiments"] = args.num_pseudo_experiments
     test_settings["num_of_sets"] = args.num_of_sets
 
+    # load test data
+    data.load_test_set()
+    
     if args.use_random_mus:
         test_settings["ground_truth_mus"] = (
             np.random.uniform(0.1, 3, test_settings["num_of_sets"])
@@ -167,9 +175,6 @@ if __name__ == "__main__":
             json.dump(test_settings, f)
     else:
         test_settings["ground_truth_mus"] = data.ground_truth_mus
-
-    # load test data
-    data.load_test_set()
 
     # predict submission
     ingestion.predict_submission(test_settings, args.random_seed)

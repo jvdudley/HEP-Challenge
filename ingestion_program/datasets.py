@@ -16,28 +16,27 @@ class Data:
     A class to represent a dataset.
 
     Parameters:
-    input_dir (str): The directory path of the input data.
+        * input_dir (str): The directory path of the input data.
 
     Attributes:
-    __train_set (dict): A dictionary containing the train dataset.
-    __test_set (dict): A dictionary containing the test dataset.
-    input_dir (str): The directory path of the input data.
+        * __train_set (dict): A dictionary containing the train dataset.
+        * __test_set (dict): A dictionary containing the test dataset.
+        * input_dir (str): The directory path of the input data.
 
     Methods:
-    load_train_set(): Loads the train dataset.
-    load_test_set(): Loads the test dataset.
-    generate_pseudo_exp_data(): Generates pseudo experimental data.
-    get_train_set(): Returns the train dataset.
-    get_test_set(): Returns the test dataset.
-    delete_train_set(): Deletes the train dataset.
-    get_syst_train_set(): Returns the train dataset with systematic variations.
+        * load_train_set(): Loads the train dataset.
+        * load_test_set(): Loads the test dataset.
+        * get_train_set(): Returns the train dataset.
+        * get_test_set(): Returns the test dataset.
+        * delete_train_set(): Deletes the train dataset.
+        * get_syst_train_set(): Returns the train dataset with systematic variations.
     """
     def __init__(self, input_dir):
         """
         Constructs a Data object.
 
         Parameters:
-        input_dir (str): The directory path of the input data.
+            input_dir (str): The directory path of the input data.
         """
 
         self.__train_set = None
@@ -94,14 +93,6 @@ class Data:
 
         print(self.__train_set["data"].info(verbose=False, memory_usage="deep"))
 
-        test_settings_file = os.path.join(
-            self.input_dir, "test", "settings", "data.json"
-        )
-        with open(test_settings_file) as f:
-            test_settings = json.load(f)
-
-        self.ground_truth_mus = test_settings["ground_truth_mus"]
-
         print("[+] Train data loaded successfully")
 
     def load_test_set(self):
@@ -126,56 +117,22 @@ class Data:
 
         self.__test_set = test_set
 
+        test_settings_file = os.path.join(
+            self.input_dir, "test", "settings", "data.json"
+        )
+        with open(test_settings_file) as f:
+            test_settings = json.load(f)
+
+        self.ground_truth_mus = test_settings["ground_truth_mus"]
+
         print("[+] Test data loaded successfully")
-
-    def generate_pseudo_exp_data(
-        self,
-        set_mu=1,
-        tes=1.0,
-        jes=1.0,
-        soft_met=0.0,
-        ttbar_scale=None,
-        diboson_scale=None,
-        bkg_scale=None,
-        seed=42,
-        return_counts=False,
-        lhc_frac=1,
-
-    ):
-        from systematics import get_bootstrapped_dataset, get_systematics_dataset
-
-        # get bootstrapped dataset from the original test set
-        pesudo_exp_data = get_bootstrapped_dataset(
-            self.__test_set,
-            mu=set_mu,
-            ttbar_scale=ttbar_scale,
-            diboson_scale=diboson_scale,          
-            bkg_scale=bkg_scale,
-            seed=seed,
-            return_labels=return_counts,
-            lhc_frac=lhc_frac,
-        )
-        labels = pesudo_exp_data.pop("labels") if return_counts else None
-        detailed_labels = pesudo_exp_data.pop("detailed_labels") if return_counts else None
-        test_set = get_systematics_dataset(
-            pesudo_exp_data,
-            tes=tes,
-            jes=jes,
-            soft_met=soft_met,
-            labels=labels,
-            detailed_labels=detailed_labels,
-        )
-        if return_counts:
-            counts = test_set["detailed_labels"].value_counts().to_dict()
-
-        return (test_set, counts) if return_counts else test_set
 
     def get_train_set(self):
         """
         Returns the train dataset.
 
         Returns:
-        dict: The train dataset.
+            dict: The train dataset.
         """
         return self.__train_set
 
@@ -184,7 +141,7 @@ class Data:
         Returns the test dataset.
 
         Returns:
-        dict: The test dataset.
+            dict: The test dataset.
         """
         return self.__test_set
 

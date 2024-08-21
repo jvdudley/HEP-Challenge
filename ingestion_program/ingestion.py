@@ -14,6 +14,29 @@ DEFAULT_INGESTION_SEED = 31415
 # ------------------------------------------
 # Ingestion Class
 # ------------------------------------------
+
+def _generate_pseudo_exp_data(data, set_mu=1, tes=1.0, jes=1.0, soft_met=0.0, ttbar_scale=None, diboson_scale=None, bkg_scale=None, seed=0):
+
+        from systematics import get_bootstrapped_dataset, get_systematics_dataset
+
+        # get bootstrapped dataset from the original test set
+        pesudo_exp_data = get_bootstrapped_dataset(
+            data,
+            mu=set_mu,
+            ttbar_scale=ttbar_scale,
+            diboson_scale=diboson_scale,
+            bkg_scale=bkg_scale,
+            seed=seed,
+        )
+        test_set = get_systematics_dataset(
+            pesudo_exp_data,
+            tes=tes,
+            jes=jes,
+            soft_met=soft_met,
+        )
+
+        return test_set
+
 class Ingestion:
     """
     Class for handling the ingestion process.
@@ -22,10 +45,10 @@ class Ingestion:
         data (object): The data object.
 
     Attributes:
-        start_time (datetime): The start time of the ingestion process.
-        end_time (datetime): The end time of the ingestion process.
-        model (object): The model object.
-        data (object): The data object.
+        * start_time (datetime): The start time of the ingestion process.
+        * end_time (datetime): The end time of the ingestion process.
+        * model (object): The model object.
+        * data (object): The data object.
     """
 
     def __init__(self, data=None):
@@ -111,7 +134,7 @@ class Ingestion:
         print("[*] Initializing Submmited Model")
         from systematics import systematics
 
-        self.model = Model(get_train_set=self.load_train_set(), systematics=systematics)
+        self.model = Model(get_train_set=self.load_train_set, systematics=systematics)
         self.data.delete_train_set()
 
     def fit_submission(self):
@@ -120,6 +143,7 @@ class Ingestion:
         """
         print("[*] Calling fit method of submitted model")
         self.model.fit()
+        
 
     def predict_submission(self, test_settings,initial_seed = DEFAULT_INGESTION_SEED):
         """
@@ -145,6 +169,9 @@ class Ingestion:
         random_state_initial = np.random.RandomState(initial_seed)
         random_state_initial.shuffle(all_combinations)
 
+        full_test_set = self.data.get_test_set()
+        del self.data
+
         self.results_dict = {}
         for set_index, test_set_index in all_combinations:
 
@@ -157,34 +184,34 @@ class Ingestion:
             random_state = np.random.RandomState(seed)
 
             if dict_systematics["tes"]:
-                tes = random_state.uniform(0.9, 1.1)
+                tes = np.clip(random_state.normal(loc=1.0, scale=0.001), a_min=0.99, a_max=1.01)
             else:
                 tes = 1.0
             if dict_systematics["jes"]:
-                jes = random_state.uniform(0.9, 1.1)
+                jes = np.clip(random_state.normal(loc=1.0, scale=0.001), a_min=0.99, a_max=1.01)
             else:
                 jes = 1.0
             if dict_systematics["soft_met"]:
-                soft_met = random_state.uniform(0.0, 5)
+                soft_met = np.clip(random_state.lognormal(mean=0.0, sigma=1.0), a_min=0.0, a_max=5.0)
             else:
                 soft_met = 0.0
 
             if dict_systematics["ttbar_scale"]:
-                ttbar_scale = random_state.uniform(0.5, 2)
+                ttbar_scale = np.clip(random_state.normal(loc=1.0, scale=0.02), a_min=0.8, a_max=1.2)
             else:
                 ttbar_scale = None
 
             if dict_systematics["diboson_scale"]:
-                diboson_scale = random_state.uniform(0.5, 2)
+                diboson_scale = np.clip(random_state.normal(loc=1.0, scale=0.25), a_min=0.0, a_max=2.0)
             else:
                 diboson_scale = None
 
             if dict_systematics["bkg_scale"]:
-                bkg_scale = random_state.uniform(0.995, 1.005)
+                bkg_scale = np.clip(random_state.normal(loc=1.0, scale=0.001), a_min=0.99, a_max=1.01)
             else:
                 bkg_scale = None
 
-            test_set = self.data.generate_pseudo_exp_data(
+            test_set = _generate_pseudo_exp_data(full_test_set,
                 set_mu=set_mu,
                 tes=tes,
                 jes=jes,

@@ -2,13 +2,8 @@
 # Dummy Sample Submission
 # ------------------------------
 
-NO_PREDICTION = False
-STAT_ONLY = True
-
-XGBOOST = False
-TENSORFLOW = True
-TORCH = False
-
+from statistical_analysis import StatisticalAnalysis
+from sklearn.model_selection import train_test_split as sk_train_test_split
 import numpy as np
 import os
 
@@ -24,44 +19,17 @@ class Model:
     """
     This is a model class to be submitted by the participants in their submission.
 
-    This class consists of the following functions:
-    1) __init__:
-        Initializes the Model class.
-        Args:
-            get_train_set (callable, optional): A function that returns a dictionary with data, labels, weights, detailed_labels, and settings.
-            systematics (object, optional): A function that can be used to get a dataset with systematics added.
-        Returns:
-            None
+    Atributes:
+        * get_train_set (callable): A function that returns a dictionary with data, labels, weights, detailed_labels and settings.
+        * systematics (object): A function that can be used to get a dataset with systematics added.
+        * model (object): The model object.
+        * name (str): The name of the model.
+        * stat_analysis (object): The statistical analysis object.
+        
+    Methods:
+        * fit(stat_only: bool = None, syst_settings: dict[str, bool] = None): Trains the model.
+        * predict(test_set, stat_only: bool = None, syst_settings: dict[str, float] = None): Predicts the values for the test set.
 
-    2) fit:
-        Trains the model.
-        Params:
-            None
-        Functionality:
-            This function can be used to train a model. If `re_train` is True, it balances the dataset,
-            fits the model using the balanced dataset, and saves the model. If `re_train` is False, it
-            loads the saved model and calculates the saved information. The saved information is used
-            to compute the train results.
-        Returns:
-            None
-
-    3) predict:
-        Predicts the values for the test set.
-        Parameters:
-            test_set (dict): A dictionary containing the test data and weights.
-        Returns:
-            dict: A dictionary with the following keys:
-            - 'mu_hat': The predicted value of mu.
-            - 'delta_mu_hat': The uncertainty in the predicted value of mu.
-            - 'p16': The lower bound of the 16th percentile of mu.
-            - 'p84': The upper bound of the 84th percentile of mu.
-
-    4) balance_set:
-        Balances the training set by equalizing the number of background and signal events.
-        Params:
-            None
-        Returns:
-            dict: A dictionary with the balanced training set.
     """
 
     def __init__(self, get_train_set=None, systematics=None):
@@ -69,120 +37,40 @@ class Model:
         Initializes the Model class.
 
         Args:
-            get_train_set (callable, optional): A function that returns a dictionary with data, labels, weights,detailed_labels and settings.
-            systematics (object, optional): A function that can be used to get a dataset with systematics added.
+            * get_train_set (callable, optional): A function that returns a dictionary with data, labels, weights,detailed_labels and settings.
+            * systematics (object, optional): A function that can be used to get a dataset with systematics added.
 
         Returns:
             None
         """
-        self.train_set = (
-            # master has been updated so that get_train_set is a callable, not a dictionary
-            get_train_set  # train_set is a dictionary with data, labels and weights
-        )
+
         self.systematics = systematics
 
-        del self.train_set["settings"]
-
-        # compute derived features. also applies cuts.
-        # consider moving this to after the data is split to reduce peak memory use
-        self.train_set = systematics(self.train_set)
-
-        print("Full data: ", self.train_set["data"].shape)
-        print("Full Labels: ", self.train_set["labels"].shape)
-        print("Full Weights: ", self.train_set["weights"].shape)
-        print(
-            "sum_signal_weights: ",
-            self.train_set["weights"][self.train_set["labels"] == 1].sum(),
-        )
-        print(
-            "sum_bkg_weights: ",
-            self.train_set["weights"][self.train_set["labels"] == 0].sum(),
-        )
-        print(" \n ")
-        def count_duplicates(data, name):
-            count = data.duplicated().sum()
-            assert count == 0, f'{name} has {count} duplicates'
-
-        # self.train_set['data'].reset_index(drop=True, inplace=True)
-        count_duplicates(self.train_set['data'], 'input data')
-        # First, split the data into two parts: 1/2 and 1/2
-        train_set, temp_set = train_test_split(self.train_set, test_size=0.5, random_state=42)
-        count_duplicates(train_set['data'], 'train data')
-        count_duplicates(temp_set['data'], 'temp data')
-
-        # Now split the temp_set into validation and holdout sets (statistical template set) with equal size
-        temp_set['data'] = temp_set['data'].reset_index(drop=True)
-        valid_set, holdout_set = train_test_split(temp_set, test_size=0.5, random_state=42)
-        count_duplicates(valid_set['data'], 'valid data')
-        count_duplicates(holdout_set['data'], 'holdout data')
-
-        self.training_set = train_set
-        self.valid_set = valid_set
-        self.holdout_set = holdout_set
-
-        del self.train_set
-
-        def print_set_info(name, dataset):
-            print(f"{name} Set:")
-            print(f"{'-' * len(name)} ")
-            print(f"  Data Shape:          {dataset['data'].shape}")
-            print(f"  Labels Shape:        {dataset['labels'].shape}")
-            print(f"  Weights Shape:       {dataset['weights'].shape}")
-            print(f"  Sum Signal Weights:  {dataset['weights'][dataset['labels'] == 1].sum():.2f}")
-            print(f"  Sum Background Weights: {dataset['weights'][dataset['labels'] == 0].sum():.2f}")
-            print("\n")
-
-        print_set_info("Training", self.training_set)
-        print_set_info("Validation", self.valid_set)
-        print_set_info("Holdout (For Statistical Template)", self.holdout_set)
+        self.get_train_set = get_train_set
 
         self.re_train = True
 
-        if XGBOOST:
-            from boosted_decision_tree import BoostedDecisionTree
+        from boosted_decision_tree import BoostedDecisionTree
 
-            self.model = BoostedDecisionTree()
-            module_file = current_file + "/model_XGB.json"
-            if os.path.exists(module_file):
-                self.model.load(module_file)
-                self.re_train = False  # if model is already trained, no need to retrain
+        self.model = BoostedDecisionTree()
+        module_file = current_file + "/model_XGB.json"
+        if os.path.exists(module_file):
+            self.model.load(module_file)
+            self.re_train = False  # if model is already trained, no need to retrain
 
-            self.name = "model_XGB"
+        self.name = "model_XGB"
 
-            print("Model is BDT")
-        elif TENSORFLOW:
-            from neural_network_TF import NeuralNetwork
+        print("Model is BDT")
 
-            module_file = current_file + "/model_tf.keras"
-            self.model = NeuralNetwork(train_data=self.training_set["data"])
-            if os.path.exists(module_file):
-                self.model.load(module_file)
-                self.re_train = False  # if model is already trained, no need to retrain
-
-            self.name = "model_tf"
-            print("Model is TF NN")
-
-        elif TORCH:
-            from neural_network_torch import NeuralNetwork
-
-            module_file = current_file + "/model_torch.pt"
-            self.model = NeuralNetwork(train_data=self.train_set["data"])
-            if os.path.exists(module_file):
-                self.model.load(module_file)
-                self.re_train = False  # if model is already trained, no need to retrain
-
-            self.name = "model_torch"
-            print("Model is Torch NN")
-
-        self.stat_analysis = StatisticalAnalysis(self.model, self.holdout_set, stat_only=False)
+        self.stat_analysis = StatisticalAnalysis(self.model, stat_only=False, bins=5)
 
     def fit(self, stat_only: bool = None, syst_settings: dict[str, bool] = None):
         """
         Trains the model.
 
-        Params:
-            stat_only (bool, optional): Force to compute stats only results [the highest priority]. Defaults to None.
-            syst_settings (dict, optional): Dictionary containing the systematic settings of whether to fix systematics in fitting. For example, {'jes': True}. Defaults to None.
+        Args:
+            * stat_only (bool, optional): Force to compute stats only results [the highest priority]. Defaults to None.
+            * syst_settings (dict, optional): Dictionary containing the systematic settings of whether to fix systematics in fitting. For example, {'jes': True}. Defaults to None.
 
         Functionality:
             This function can be used to train a model. If `re_train` is True, it balances the dataset,
@@ -193,37 +81,102 @@ class Model:
         Returns:
             None
         """
-
-        if self.re_train:
-
-            balanced_set = self.balance_set()
-
-            if XGBOOST:
-                self.model.fit(
-                    balanced_set["data"], balanced_set["labels"], balanced_set["weights"],
-                    valid_set=[self.valid_set["data"], self.valid_set["labels"], self.valid_set["weights"]],
-                )
-            else:
-                self.model.fit(
-                    balanced_set["data"], balanced_set["labels"], balanced_set["weights"]
-                )
-            self.model.save(current_file + "/" + self.name)
-
+        
         saved_info_file = current_file + "/saved_info_" + self.name + ".pkl"
-        if os.path.exists(saved_info_file) and not STAT_ONLY:
-            self.stat_analysis.load(saved_info_file) 
-        elif not STAT_ONLY:   
-            self.stat_analysis.calculate_saved_info()
+
+        
+        if self.re_train:
+            train_set = self.get_train_set()
+
+            """
+            The systematics code does the following
+            1. Apply systematics 
+            2. Apply post-systematics cuts to the data
+            3. Compute Dervied features
+            
+            NOTE:
+            Without this transformation, the data will not be representative of the pseudo-experiments
+            """
+            train_set = self.systematics(train_set)
+
+            print("Full data: ", train_set["data"].shape)
+            print("Full Labels: ", train_set["labels"].shape)
+            print("Full Weights: ", train_set["weights"].shape)
+            print(
+                "sum_signal_weights: ",
+                train_set["weights"][train_set["labels"] == 1].sum(),
+            )
+            print(
+                "sum_bkg_weights: ",
+                train_set["weights"][train_set["labels"] == 0].sum(),
+            )
+            print(" \n ")
+
+            # First, split the data into two parts: 1/2 and 1/2
+            training_set, temp_set = train_test_split(
+                train_set, test_size=0.5, random_state=42, reweight=True
+            )
+
+            # Now split the temp_set into validation and holdout sets (statistical template set) with equal size
+            temp_set["data"] = temp_set["data"].reset_index(drop=True)
+            valid_set, holdout_set = train_test_split(
+                temp_set, test_size=0.5, random_state=42, reweight=True
+            )
+
+            del train_set
+
+            def print_set_info(name, dataset):
+                print(f"{name} Set:")
+                print(f"{'-' * len(name)} ")
+                print(f"  Data Shape:          {dataset['data'].shape}")
+                print(f"  Labels Shape:        {dataset['labels'].shape}")
+                print(f"  Weights Shape:       {dataset['weights'].shape}")
+                print(
+                    f"  Sum Signal Weights:  {dataset['weights'][dataset['labels'] == 1].sum():.2f}"
+                )
+                print(
+                    f"  Sum Background Weights: {dataset['weights'][dataset['labels'] == 0].sum():.2f}"
+                )
+                print("\n")
+
+            print_set_info("Training", training_set)
+            print_set_info("Validation", valid_set)
+            print_set_info("Holdout (For Statistical Template)", holdout_set)
+
+            balanced_set = balance_set(training_set)
+
+            self.model.fit(
+                balanced_set["data"],
+                balanced_set["labels"],
+                balanced_set["weights"],
+                valid_set=[
+                    valid_set["data"],
+                    valid_set["labels"],
+                    valid_set["weights"],
+                ],
+            )
+
+            self.model.save(current_file + "/" + self.name)
+            
+            self.stat_analysis.calculate_saved_info(holdout_set)
             self.stat_analysis.save(saved_info_file)
 
-        def predict_and_analyze(dataset_name, data_set, fig_name, stat_only, syst_settings):
+        else:
+            assert os.path.exists(
+                saved_info_file
+            ), f"Saved info file {saved_info_file} does not exist."
+            self.stat_analysis.load(saved_info_file)
+
+        def predict_and_analyze(
+            dataset_name, data_set, fig_name, stat_only, syst_settings
+        ):
             score = self.model.predict(data_set["data"])
             results = self.stat_analysis.compute_mu(
                 score,
                 data_set["weights"],
                 plot=fig_name,
-                # stat_only=stat_only,
-                # syst_fixed_setting=syst_settings,
+                stat_only=stat_only,
+                syst_fixed_setting=syst_settings,
             )
 
             print(f"{dataset_name} Results:")
@@ -232,52 +185,33 @@ class Model:
                 print(f"\t{key} : {value}")
             print("\n")
 
-        # Predict and analyze for each set
-        datasets = [
-            ("Training", self.training_set, "train_mu"),
-            ("Validation", self.valid_set, "valid_mu"),
-            ("Holdout", self.holdout_set, "holdout_mu"),
-        ]
+        if self.re_train:
+            # Predict and analyze for each set
+            datasets = [
+                ("Training", training_set, "train_mu"),
+                ("Validation", valid_set, "valid_mu"),
+                ("Holdout", holdout_set, "holdout_mu"),
+            ]
 
-        for name, dataset, plot_name in datasets:
-            predict_and_analyze(name, dataset, plot_name, stat_only=stat_only, syst_settings=syst_settings)
-        # compute template histograms with cuts
-        self.stat_analysis.nominal_histograms(apply_syst=True)
+            for name, dataset, plot_name in datasets:
+                predict_and_analyze(
+                    name,
+                    dataset,
+                    plot_name,
+                    stat_only=stat_only,
+                    syst_settings=syst_settings,
+                )
 
-        # delete the training set to free up memory
-        del self.training_set
-        del self.valid_set
-        del self.holdout_set
-        del self.stat_analysis.holdout_set
 
-    def balance_set(self):
-        balanced_set = self.training_set.copy()
-
-        weights_train = self.training_set["weights"].copy()
-        train_labels = self.training_set["labels"].copy()
-        class_weights_train = (
-            weights_train[train_labels == 0].sum(),
-            weights_train[train_labels == 1].sum(),
-        )
-
-        for i in range(len(class_weights_train)):  # loop on B then S target
-            # training dataset: equalize number of background and signal
-            weights_train[train_labels == i] *= (
-                    max(class_weights_train) / class_weights_train[i]
-            )
-            # test dataset : increase test weight to compensate for sampling
-
-        balanced_set["weights"] = weights_train
-
-        return balanced_set
-
-    def predict(self, test_set, stat_only: bool = None, syst_settings: dict[str, float] = None):
+    def predict(
+        self, test_set, stat_only: bool = None, syst_settings: dict[str, float] = None
+    ):
         """
         Predicts the values for the test set.
 
-        Params:
-            stat_only (bool, optional): Force to compute stats only results [the highest priority]. Defaults to None.
-            syst_settings (dict, optional): Dictionary containing the systematic settings of whether to fix systematics in fitting. For example, {'jes': True}. Defaults to None.
+        Args:
+            * stat_only (bool, optional): Force to compute stats only results [the highest priority]. Defaults to None.
+            * syst_settings (dict, optional): Dictionary containing the systematic settings of whether to fix systematics in fitting. For example, {'jes': True}. Defaults to None.
 
         Returns:
             dict: A dictionary with the following keys:
@@ -297,13 +231,15 @@ class Model:
         test_data = test_set["data"]
         test_weights = test_set["weights"]
 
+        print("[*] -> test weights sum = ", test_weights.sum())
+
         predictions = self.model.predict(test_data)
 
         result = self.stat_analysis.compute_mu(
             predictions,
             test_weights,
-            # stat_only=stat_only,
-            # syst_fixed_setting=syst_settings
+            stat_only=stat_only,
+            syst_fixed_setting=syst_settings,
         )
 
         print("Test Results: ", result)
@@ -311,7 +247,19 @@ class Model:
         return result
 
 
-def train_test_split(data_set, test_size=0.2, random_state=42, reweight=True):
+def train_test_split(data_set, test_size=0.2, random_state=42, reweight=False):
+    """
+    Splits the data into training and testing sets.
+
+    Args:
+        * data_set (dict): A dictionary containing the data, labels, weights, detailed_labels, and settings
+        * test_size (float, optional): The size of the testing set. Defaults to 0.2.
+        * random_state (int, optional): The random state. Defaults to 42.
+        * reweight (bool, optional): Whether to reweight the data. Defaults to False.
+
+    Returns:
+        tuple: A tuple containing the training and testing
+    """
     data = data_set["data"].copy()
     train_set = {}
     test_set = {}
@@ -319,32 +267,21 @@ def train_test_split(data_set, test_size=0.2, random_state=42, reweight=True):
 
     print(f"Full size of the data is {full_size}")
 
-    np.random.seed(random_state)
-    if isinstance(test_size, float):
-        test_number = int(test_size * full_size)
-        # random_index = np.random.randint(0, full_size, test_number)
-    elif isinstance(test_size, int):
-        test_number = test_size
-        # random_index = np.random.randint(0, full_size, test_size)
-    else:
-        raise ValueError("test_size should be either float or int")
+    for key in data_set.keys():
+        if (key != "data") and (key != "settings"):
+            data[key] = np.array(data_set[key])
 
-    full_range = np.arange(full_size) # data.index
-    random_index = np.random.choice(full_range, test_number, replace=False)
-    remaining_index = full_range[np.isin(full_range, random_index, invert=True)]
-    remaining_index = np.array(remaining_index)
-
-    print(f"Train size is {len(remaining_index)}")
-    print(f"Test size is {len(random_index)}")
+    train_data, test_data = sk_train_test_split(
+        data, test_size=test_size, random_state=random_state
+    )
 
     for key in data_set.keys():
         if (key != "data") and (key != "settings"):
-            array = np.array(data_set[key])
-            test_set[key] = array[random_index]
-            train_set[key] = array[remaining_index]
+            train_set[key] = np.array(train_data.pop(key))
+            test_set[key] = np.array(test_data.pop(key))
 
-    test_set["data"] = data.iloc[random_index]
-    train_set["data"] = data.iloc[remaining_index]
+    train_set["data"] = train_data
+    test_set["data"] = test_data
 
     if reweight is True:
         signal_weight = np.sum(data_set["weights"][data_set["labels"] == 1])
@@ -355,17 +292,48 @@ def train_test_split(data_set, test_size=0.2, random_state=42, reweight=True):
         background_weight_test = np.sum(test_set["weights"][test_set["labels"] == 0])
 
         train_set["weights"][train_set["labels"] == 1] = train_set["weights"][
-                                                             train_set["labels"] == 1
-                                                             ] * (signal_weight / signal_weight_train)
+            train_set["labels"] == 1
+        ] * (signal_weight / signal_weight_train)
         test_set["weights"][test_set["labels"] == 1] = test_set["weights"][
-                                                           test_set["labels"] == 1
-                                                           ] * (signal_weight / signal_weight_test)
+            test_set["labels"] == 1
+        ] * (signal_weight / signal_weight_test)
 
         train_set["weights"][train_set["labels"] == 0] = train_set["weights"][
-                                                             train_set["labels"] == 0
-                                                             ] * (background_weight / background_weight_train)
+            train_set["labels"] == 0
+        ] * (background_weight / background_weight_train)
         test_set["weights"][test_set["labels"] == 0] = test_set["weights"][
-                                                           test_set["labels"] == 0
-                                                           ] * (background_weight / background_weight_test)
+            test_set["labels"] == 0
+        ] * (background_weight / background_weight_test)
 
     return train_set, test_set
+
+def balance_set(training_set):
+    """
+    Balances the training set by equalizing the number of background and signal events.
+
+    Args:
+        training_set (dict): A dictionary containing the data, labels, weights, detailed_labels, and settings.
+
+    Returns:
+        dict: A dictionary containing the balanced training set.
+    """
+    
+    balanced_set = training_set.copy()
+
+    weights_train = training_set["weights"].copy()
+    train_labels = training_set["labels"].copy()
+    class_weights_train = (
+        weights_train[train_labels == 0].sum(),
+        weights_train[train_labels == 1].sum(),
+    )
+
+    for i in range(len(class_weights_train)):  # loop on B then S target
+        # training dataset: equalize number of background and signal
+        weights_train[train_labels == i] *= (
+            max(class_weights_train) / class_weights_train[i]
+        )
+        # test dataset : increase test weight to compensate for sampling
+
+    balanced_set["weights"] = weights_train
+
+    return balanced_set

@@ -274,9 +274,9 @@ def ttbar_bkg_weight_norm(weights, detailedlabel, systBkgNorm):
     Apply a scaling to the weight. For ttbar background
 
     Args:
-        weights (array-like): The weights to be scaled
-        detailedlabel (array-like): The detailed labels
-        systBkgNorm (float): The scaling factor
+        * weights (array-like): The weights to be scaled
+        * detailedlabel (array-like): The detailed labels
+        * systBkgNorm (float): The scaling factor
 
     Returns:
         array-like: The scaled weights
@@ -290,10 +290,11 @@ def diboson_bkg_weight_norm(weights, detailedlabel, systBkgNorm):
     Apply a scaling to the weight. For Diboson background
 
     Args:
-        weights (array-like): The weights to be scaled
-        detailedlabel (array-like): The detailed labels
-        systBkgNorm (float): The scaling factor
+        * weights (array-like): The weights to be scaled
+        * detailedlabel (array-like): The detailed labels
+        * systBkgNorm (float): The scaling factor
 
+    
     Returns:
         array-like: The scaled weights
 
@@ -329,11 +330,11 @@ def mom4_manipulate(data, systTauEnergyScale, systJetEnergyScale, soft_met, seed
     Manipulate primary inputs : the PRI_had_pt PRI_jet_leading_pt PRI_jet_subleading_pt and recompute the others values accordingly.
 
     Args:
-        data (pandas.DataFrame): The dataset to be manipulated
-        systTauEnergyScale (float): The factor applied to PRI_had_pt
-        systJetEnergyScale (float): The factor applied to all jet pt
-        soft_met (float): The additional soft MET energy
-        seed (int): The random seed
+        * data (pandas.DataFrame): The dataset to be manipulated
+        * systTauEnergyScale (float): The factor applied to PRI_had_pt
+        * systJetEnergyScale (float): The factor applied to all jet pt
+        * soft_met (float): The additional soft MET energy
+        * seed (int): The random seed
 
     Returns:
         pandas.DataFrame: The manipulated dataset
@@ -455,10 +456,10 @@ def make_unweighted_set(data_set):
 def postprocess(data):
     """
     Select the events with the following conditions:
-    PRI_had_pt > 26
-    PRI_jet_leading_pt > 26
-    PRI_jet_subleading_pt > 26
-    PRI_lep_pt > 20
+    * PRI_had_pt > 26
+    * PRI_jet_leading_pt > 26
+    * PRI_jet_subleading_pt > 26
+    * PRI_lep_pt > 20
 
     This is applied to the dataset after the systematics are applied
 
@@ -468,11 +469,26 @@ def postprocess(data):
     Returns:
         pandas.DataFrame: The postprocessed dataset
     """
+    # apply higher threshold on had pt (dropping events)
     data = data.drop(data[data.PRI_had_pt < 26].index)
+
+    # apply higher threshold on leading jet pt (dropping events)
     data = data.drop(data[(data.PRI_jet_leading_pt < 26) & (data.PRI_n_jets > 0)].index)
-    data = data.drop(
-        data[(data.PRI_jet_subleading_pt < 26) & (data.PRI_n_jets > 1)].index
-    )
+
+    #need to reindex
+    data.reset_index(drop=True, inplace=True)
+
+
+    # if subleading jet pt below high threshold, do so it never existed
+    mask = data['PRI_jet_subleading_pt'].between(0, 26)
+    data.loc[mask, 'PRI_jet_all_pt'] -= data['PRI_jet_subleading_pt']
+    data.loc[mask, 'PRI_jet_subleading_pt'] = -25
+    data.loc[mask, 'PRI_jet_subleading_eta'] = -25
+    data.loc[mask, 'PRI_jet_subleading_phi'] = -25
+    data.loc[mask, 'PRI_n_jets'] -= 1
+
+
+    # apply low threshold on lepton pt (does nothing)
     data = data.drop(data[data.PRI_lep_pt < 20].index)
 
     return data
@@ -493,20 +509,19 @@ def systematics(
     Apply systematics to the dataset
 
     Args:
-        data_set (dict): The dataset to apply systematics to
-        tes (float): The factor applied to PRI_had_pt
-        jes (float): The factor applied to all jet pt
-        soft_met (float): The additional soft MET energy
-        seed (int): The random seed
-        ttbar_scale (float): The scaling factor for ttbar background
-        diboson_scale (float): The scaling factor for diboson background
-        bkg_scale (float): The scaling factor for other backgrounds
-        verbose (int): The verbosity level
+        * data_set (dict): The dataset to apply systematics to
+        * tes (float): The factor applied to PRI_had_pt
+        * jes (float): The factor applied to all jet pt
+        * soft_met (float): The additional soft MET energy
+        * seed (int): The random seed
+        * ttbar_scale (float): The scaling factor for ttbar background
+        * diboson_scale (float): The scaling factor for diboson background
+        * bkg_scale (float): The scaling factor for other backgrounds
+        * verbose (int): The verbosity level
 
     Returns:
         dict: The dataset with applied systematics
     """
-
     data_set_new = data_set.copy()
 
     if "weights" in data_set_new.keys():
@@ -529,7 +544,9 @@ def systematics(
 
     if verbose > 0:
         print("Tau energy rescaling :", tes)
-    data = mom4_manipulate(
+
+    # modify primary features according to tes, jes softmet    
+    data_syst = mom4_manipulate(
         data=data_set["data"].copy(),
         systTauEnergyScale=tes,
         systJetEnergyScale=jes,
@@ -537,18 +554,29 @@ def systematics(
         seed=seed,
     )
 
-    df = DER_data(data)
+    
+# add back auxilliary columns label, weight, detailed label in a dataframe
+# if events are removed, they should also be removed from weights, label,detailedlabel
+
     for key in data_set_new.keys():
-        if key is not "data":
-            df[key] = data_set_new[key]
+        if key not in ["data","settings"]:
+            data_syst[key] = data_set_new[key]
 
-    data_syst = postprocess(df)
+    # deal with thresholds on had pt and jet pt
+    # possibly remove sub leading jet
+    # possibly remove events
+    data_syst = postprocess(data_syst)
 
+    # build resulting dictionary
+    #dict
     data_syst_set = {}
     for key in data_set_new.keys():
-        if key is not "data":
+        if key not in ["data","settings"]:
             data_syst_set[key] = data_syst.pop(key)
-    data_syst_set["data"] = data_syst
+    # compute DERived features        
+    data_syst_set["data"] = DER_data(data_syst)
+    if "settings" in data_set_new.keys():
+        data_syst_set["settings"] = data_set_new["settings"]
 
     return data_syst_set
 
@@ -568,12 +596,12 @@ def get_bootstrapped_dataset(
     Generate a bootstrapped dataset
 
     Args:
-        test_set (dict): The original test dataset
-        mu (float): The scaling factor for htautau background
-        seed (int): The random seed
-        ttbar_scale (float): The scaling factor for ttbar background
-        diboson_scale (float): The scaling factor for diboson background
-        bkg_scale (float): The scaling factor for other backgrounds
+        * test_set (dict): The original test dataset
+        * mu (float): The scaling factor for htautau background
+        * seed (int): The random seed
+        * ttbar_scale (float): The scaling factor for ttbar background
+        * diboson_scale (float): The scaling factor for diboson background
+        * bkg_scale (float): The scaling factor for other backgrounds
 
     Returns:
         pandas.DataFrame: The bootstrapped dataset
