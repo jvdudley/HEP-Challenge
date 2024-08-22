@@ -11,6 +11,8 @@ TORCH = False
 
 import numpy as np
 import os
+import pandas as pd
+from sklearn.model_selection import train_test_split as sk_train_test_split
 
 if STAT_ONLY:
     from stat_only_analysis import StatOnlyAnalysis as StatisticalAnalysis
@@ -75,13 +77,17 @@ class Model:
         Returns:
             None
         """
-        self.train_set = (
-            # master has been updated so that get_train_set is a callable, not a dictionary
-            get_train_set  # train_set is a dictionary with data, labels and weights
-        )
+        self.get_train_set = get_train_set
         self.systematics = systematics
 
+        self.train_set = get_train_set()
         del self.train_set["settings"]
+        self.train_set["labels"] = self.train_set["labels"].astype(np.int8)
+        self.train_set["detailed_labels"] = pd.Categorical(
+            self.train_set["detailed_labels"],
+            ['htautau', 'diboson', 'ttbar', 'ztautau'],
+            True,
+        )
 
         # compute derived features. also applies cuts.
         # consider moving this to after the data is split to reduce peak memory use
@@ -318,33 +324,24 @@ def train_test_split(data_set, test_size=0.2, random_state=42, reweight=True):
     full_size = len(data)
 
     print(f"Full size of the data is {full_size}")
+    # combine everything into one dataframe
+    for name in data_set.keys():
+        if name != 'data':
+            data[name] = data_set[name]
+    # split
+    train_df, test_df = sk_train_test_split(data, test_size=test_size, random_state=random_state)
+    # rearrange the data into the original format
+    train_set['detailed_labels'] = pd.Categorical(train_df.pop('detailed_labels'))
+    test_set['detailed_labels'] = pd.Categorical(test_df.pop('detailed_labels'))
+    for name in data_set.keys():
+        if name not in ('data', 'detailed_labels'):
+            train_set[name] = train_df.pop(name).to_numpy()
+            test_set[name] = test_df.pop(name).to_numpy()
+    train_set['data'] = train_df
+    test_set['data'] = test_df
 
-    np.random.seed(random_state)
-    if isinstance(test_size, float):
-        test_number = int(test_size * full_size)
-        # random_index = np.random.randint(0, full_size, test_number)
-    elif isinstance(test_size, int):
-        test_number = test_size
-        # random_index = np.random.randint(0, full_size, test_size)
-    else:
-        raise ValueError("test_size should be either float or int")
-
-    full_range = np.arange(full_size) # data.index
-    random_index = np.random.choice(full_range, test_number, replace=False)
-    remaining_index = full_range[np.isin(full_range, random_index, invert=True)]
-    remaining_index = np.array(remaining_index)
-
-    print(f"Train size is {len(remaining_index)}")
-    print(f"Test size is {len(random_index)}")
-
-    for key in data_set.keys():
-        if (key != "data") and (key != "settings"):
-            array = np.array(data_set[key])
-            test_set[key] = array[random_index]
-            train_set[key] = array[remaining_index]
-
-    test_set["data"] = data.iloc[random_index]
-    train_set["data"] = data.iloc[remaining_index]
+    print(f"Train size is {len(train_df)}")
+    print(f"Test size is {len(test_df)}")
 
     if reweight is True:
         signal_weight = np.sum(data_set["weights"][data_set["labels"] == 1])
