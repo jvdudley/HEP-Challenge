@@ -314,6 +314,14 @@ class Model:
 
         print("Test Results: ", result)
 
+        TMP_RESULT_FILE = f'num_events_{len(test_data)}.csv'
+        pd.DataFrame(result, index=[0]).to_csv(
+            os.path.join(current_file, TMP_RESULT_FILE),
+            index=False,
+            mode='a',
+            header=not os.path.exists(os.path.join(current_file, TMP_RESULT_FILE)),
+        )
+
         return result
 
 
