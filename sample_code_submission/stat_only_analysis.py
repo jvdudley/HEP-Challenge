@@ -238,11 +238,11 @@ class StatOnlyAnalysis:
         if weights is None:
             weights = np.ones_like(scores)
         if mu_range is None:
-            mu_range = (0, 4)
-        mu_hat, p16, p84 = self.estimate_mu(scores, weights, mu_range=mu_range, mu_steps=10**4, epsilon=epsilon, plot=plot)
+            mu_range = (-1, 5)
+        mu_hat, p16, p84 = self.estimate_mu(scores, weights, mu_range=mu_range, mu_steps=10**3, epsilon=epsilon, plot=plot)
         delta_mu_hat = p84 - p16
         mu_range = (mu_hat - delta_mu_hat, mu_hat + delta_mu_hat)
-        # mu_hat, p16, p84 = self.estimate_mu(scores, weights, mu_range=mu_range, mu_steps=10**4, epsilon=epsilon, plot=f'{plot}: mu final')
+        mu_hat, p16, p84 = self.estimate_mu(scores, weights, mu_range=mu_range, mu_steps=10**4, epsilon=epsilon, plot=f'{plot}: mu final')
         return {
             'mu_hat': mu_hat,
             'delta_mu_hat': p84 - p16,
