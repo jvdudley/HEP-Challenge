@@ -4,6 +4,7 @@
 
 NO_PREDICTION = False
 STAT_ONLY = True
+TEMPLATE_FILE = "templates.h5"
 
 XGBOOST = False
 TENSORFLOW = True
@@ -80,7 +81,66 @@ class Model:
         self.get_train_set = get_train_set
         self.systematics = systematics
 
-        self.train_set = get_train_set()
+        self.re_train = True
+
+        if XGBOOST:
+            from boosted_decision_tree import BoostedDecisionTree
+
+            self.model = BoostedDecisionTree()
+            module_file = current_file + "/model_XGB.json"
+            if os.path.exists(module_file):
+                self.model.load(module_file)
+                self.re_train = False  # if model is already trained, no need to retrain
+
+            self.name = "model_XGB"
+
+            print("Model is BDT")
+        elif TENSORFLOW:
+            from neural_network_TF import NeuralNetwork
+
+            module_file = current_file + "/model_tf.keras"
+            self.model = NeuralNetwork(train_data=self.training_set["data"])
+            if os.path.exists(module_file):
+                self.model.load(module_file)
+                self.re_train = False  # if model is already trained, no need to retrain
+
+            self.name = "model_tf"
+            print("Model is TF NN")
+
+        elif TORCH:
+            from neural_network_torch import NeuralNetwork
+
+            module_file = current_file + "/model_torch.pt"
+            self.model = NeuralNetwork(train_data=self.train_set["data"])
+            if os.path.exists(module_file):
+                self.model.load(module_file)
+                self.re_train = False  # if model is already trained, no need to retrain
+
+            self.name = "model_torch"
+            print("Model is Torch NN")
+
+
+    def fit(self, stat_only: bool = None, syst_settings: dict[str, bool] = None):
+        """
+        Trains the model.
+
+        Params:
+            stat_only (bool, optional): Force to compute stats only results [the highest priority]. Defaults to None.
+            syst_settings (dict, optional): Dictionary containing the systematic settings of whether to fix systematics in fitting. For example, {'jes': True}. Defaults to None.
+
+        Functionality:
+            This function can be used to train a model. If `re_train` is True, it balances the dataset,
+            fits the model using the balanced dataset, and saves the model. If `re_train` is False, it
+            loads the saved model and calculates the saved information. The saved information is used
+            to compute the train results.
+
+        Returns:
+            None
+        """
+        if os.path.exists(os.path.join(current_file, TEMPLATE_FILE)):
+            self.stat_analysis = StatisticalAnalysis(self.model, template_file=os.path.join(current_file, TEMPLATE_FILE))
+            return None
+        self.train_set = self.get_train_set()
         del self.train_set["settings"]
         self.train_set["labels"] = self.train_set["labels"].astype(np.int8)
         self.train_set["detailed_labels"] = pd.Categorical(
@@ -91,7 +151,7 @@ class Model:
 
         # compute derived features. also applies cuts.
         # consider moving this to after the data is split to reduce peak memory use
-        self.train_set = systematics(self.train_set)
+        self.train_set = self.systematics(self.train_set)
 
         print("Full data: ", self.train_set["data"].shape)
         print("Full Labels: ", self.train_set["labels"].shape)
@@ -142,63 +202,7 @@ class Model:
         print_set_info("Validation", self.valid_set)
         print_set_info("Holdout (For Statistical Template)", self.holdout_set)
 
-        self.re_train = True
-
-        if XGBOOST:
-            from boosted_decision_tree import BoostedDecisionTree
-
-            self.model = BoostedDecisionTree()
-            module_file = current_file + "/model_XGB.json"
-            if os.path.exists(module_file):
-                self.model.load(module_file)
-                self.re_train = False  # if model is already trained, no need to retrain
-
-            self.name = "model_XGB"
-
-            print("Model is BDT")
-        elif TENSORFLOW:
-            from neural_network_TF import NeuralNetwork
-
-            module_file = current_file + "/model_tf.keras"
-            self.model = NeuralNetwork(train_data=self.training_set["data"])
-            if os.path.exists(module_file):
-                self.model.load(module_file)
-                self.re_train = False  # if model is already trained, no need to retrain
-
-            self.name = "model_tf"
-            print("Model is TF NN")
-
-        elif TORCH:
-            from neural_network_torch import NeuralNetwork
-
-            module_file = current_file + "/model_torch.pt"
-            self.model = NeuralNetwork(train_data=self.train_set["data"])
-            if os.path.exists(module_file):
-                self.model.load(module_file)
-                self.re_train = False  # if model is already trained, no need to retrain
-
-            self.name = "model_torch"
-            print("Model is Torch NN")
-
-        self.stat_analysis = StatisticalAnalysis(self.model, self.holdout_set, stat_only=False)
-
-    def fit(self, stat_only: bool = None, syst_settings: dict[str, bool] = None):
-        """
-        Trains the model.
-
-        Params:
-            stat_only (bool, optional): Force to compute stats only results [the highest priority]. Defaults to None.
-            syst_settings (dict, optional): Dictionary containing the systematic settings of whether to fix systematics in fitting. For example, {'jes': True}. Defaults to None.
-
-        Functionality:
-            This function can be used to train a model. If `re_train` is True, it balances the dataset,
-            fits the model using the balanced dataset, and saves the model. If `re_train` is False, it
-            loads the saved model and calculates the saved information. The saved information is used
-            to compute the train results.
-
-        Returns:
-            None
-        """
+        self.stat_analysis = StatisticalAnalysis(self.model, self.holdout_set, template_file=os.path.join(current_file, TEMPLATE_FILE))
 
         if self.re_train:
 

@@ -2,8 +2,10 @@ import numpy as np
 from sys import path
 from systematics import systematics
 import pickle
+from pathlib import Path
 from iminuit import Minuit
 import matplotlib.pyplot as plt
+import pandas as pd
 from tqdm import tqdm
 
 
@@ -30,13 +32,14 @@ class StatOnlyAnalysis:
         compute_mu: Perform calculations to calculate mu.
         nominal_histograms: Calculate the nominal histograms for signal and background events.
     """
-    def __init__(self, model, holdout_set, bins=None, range=(0, 1), stat_only=None):
+    def __init__(self, model, holdout_set=None, bins=None, range=(0, 1), stat_only=None, template_file=None):
         self.model = model
         self.bins = bins
         self.range = range
         self.bin_edges = None
         self.holdout_set = holdout_set
         self.holdout_syst_applied = None
+        self.template_file = template_file
         # self.holdout_scores = None
         self.signal_hist = None
         self.background_hist = None
@@ -55,6 +58,14 @@ class StatOnlyAnalysis:
         - holdout_signal_hist (numpy.ndarray): The histogram of signal events in the holdout set.
         - holdout_background_hist (numpy.ndarray): The histogram of background events in the holdout set.
         """
+        if self.holdout_set is None:
+            assert self.template_file is not None, "Must provide holdout set or template file."
+            template_df = pd.read_hdf(self.template_file, 'df', 'r')
+            self.bin_edges = template_df['bin_edges']
+            # bin_edges is one longer than the histograms
+            self.signal_hist = template_df['signal_hist'][:-1]
+            self.background_hist = template_df['background_hist'][:-1]
+            return None
         # if bins is None, should compute optimal number of bins
         if self.bins is None:
             # TMP: use 2000 bins for now
@@ -95,6 +106,11 @@ class StatOnlyAnalysis:
             bins=self.bin_edges,
             weights=self.background_weights**2,
         )
+        pd.DataFrame({
+            'bin_edges': self.bin_edges,
+            'signal_hist': self.signal_hist,
+            'background_hist': self.background_hist,
+        }).to_hdf(self.template_file, 'df','w')
 
         # consider returning whether or not there are too many bins
 
