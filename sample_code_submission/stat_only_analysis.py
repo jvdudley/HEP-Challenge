@@ -34,12 +34,14 @@ class StatOnlyAnalysis:
     """
     def __init__(self, model, holdout_set=None, bins=None, range=(0, 1), stat_only=None, template_file=None):
         self.model = model
-        self.bins = bins
+        # TMP: use 2000 bins for now
+        # after some tests with the full test set, 128 seemed to be the best
+        self.bins = bins if bins is not None else 128
         self.range = range
         self.bin_edges = None
         self.holdout_set = holdout_set
         self.holdout_syst_applied = None
-        self.template_file = template_file
+        self.template_file = Path(template_file) if template_file is not None else None
         # self.holdout_scores = None
         self.signal_hist = None
         self.background_hist = None
@@ -59,18 +61,21 @@ class StatOnlyAnalysis:
         - holdout_background_hist (numpy.ndarray): The histogram of background events in the holdout set.
         """
         if self.holdout_set is None:
-            assert self.template_file is not None, "Must provide holdout set or template file."
-            template_df = pd.read_hdf(self.template_file, 'df', 'r')
-            self.bin_edges = template_df['bin_edges']
-            # bin_edges is one longer than the histograms
-            self.signal_hist = template_df['signal_hist'][:-1]
-            self.background_hist = template_df['background_hist'][:-1]
+            # should assert file exists
+            assert self.template_file.exists(), "Must provide holdout set or existing template file."
+            with np.load(self.template_file) as f:
+                self.bin_edges = f['bin_edges']
+                self.signal_hist = f['signal_hist']
+                self.background_hist = f['background_hist']
+            # template_df = pd.read_hdf(self.template_file, 'df', 'r')
+            # self.bin_edges = template_df['bin_edges']
+            # # bin_edges is one longer than the histograms
+            # self.signal_hist = template_df['signal_hist'][:-1]
+            # self.background_hist = template_df['background_hist'][:-1]
             return None
         # if bins is None, should compute optimal number of bins
-        if self.bins is None:
-            # TMP: use 2000 bins for now
-            # after some tests with the full test set, 128 seemed to be the best
-            self.bins = 128
+        if bins is not None:
+            self.bins = bins
         self.bin_edges = np.linspace(*self.range, self.bins + 1)
         # determine if scores need to be computed
         if apply_syst != self.holdout_syst_applied:
@@ -106,11 +111,20 @@ class StatOnlyAnalysis:
             bins=self.bin_edges,
             weights=self.background_weights**2,
         )
-        pd.DataFrame({
-            'bin_edges': self.bin_edges,
-            'signal_hist': self.signal_hist,
-            'background_hist': self.background_hist,
-        }).to_hdf(self.template_file, 'df','w')
+        # save histograms
+        if self.template_file is not None:
+            # consider removing file if it already exists
+            np.savez_compressed(
+                self.template_file,
+                bin_edges=self.bin_edges,
+                signal_hist=self.signal_hist,
+                background_hist=self.background_hist,
+            )
+        # pd.DataFrame({
+        #     'bin_edges': self.bin_edges,
+        #     'signal_hist': self.signal_hist,
+        #     'background_hist': self.background_hist,
+        # }).to_hdf(self.template_file, 'df','w')
 
         # consider returning whether or not there are too many bins
 

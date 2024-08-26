@@ -4,7 +4,7 @@
 
 NO_PREDICTION = False
 STAT_ONLY = True
-TEMPLATE_FILE = "templates.h5"
+TEMPLATE_FILE = "templates.npz"
 
 XGBOOST = False
 TENSORFLOW = True
