@@ -5,6 +5,7 @@
 NO_PREDICTION = False
 STAT_ONLY = True
 TEMPLATE_FILE = "templates.npz"
+N_DIM = 28
 
 XGBOOST = False
 TENSORFLOW = True
@@ -111,6 +112,11 @@ class Model:
             None
         """
         if os.path.exists(os.path.join(current_file, TEMPLATE_FILE)):
+            assert os.path.exists(os.path.join(current_file, 'model_tf.keras')), 'if template exists, model must also exist'
+            from neural_network_TF import NeuralNetwork
+            self.model = NeuralNetwork(N_DIM)
+            self.model.load(os.path.join(current_file, 'model_tf.keras'))
+            self.re_train = False
             self.stat_analysis = StatisticalAnalysis(self.model, template_file=os.path.join(current_file, TEMPLATE_FILE))
             return None
         self.train_set = self.get_train_set()
@@ -203,7 +209,7 @@ class Model:
             from neural_network_torch import NeuralNetwork
 
             module_file = current_file + "/model_torch.pt"
-            self.model = NeuralNetwork(train_data=self.train_set["data"])
+            self.model = NeuralNetwork(train_data=self.training_set["data"])
             if os.path.exists(module_file):
                 self.model.load(module_file)
                 self.re_train = False  # if model is already trained, no need to retrain
