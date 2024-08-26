@@ -297,7 +297,7 @@ class Model:
 
         return balanced_set
 
-    def predict(self, test_set, stat_only: bool = None, syst_settings: dict[str, float] = None):
+    def predict(self, test_set, to_save=None, stat_only: bool = None, syst_settings: dict[str, float] = None):
         """
         Predicts the values for the test set.
 
@@ -336,7 +336,10 @@ class Model:
 
         # save the event counts with filename {number of events}_{time}.csv
         event_count_filename = os.path.join(self.counts_dir, f'{len(test_data)}_{int(time())}.csv')
-        pd.DataFrame(result, index=[0]).assign(counts=len(test_data)).to_csv(
+        event_count_df = pd.DataFrame(result, index=[0]).assign(counts=len(test_data))
+        if to_save is not None:
+            event_count_df = event_count_df.assign(**to_save)
+        event_count_df.to_csv(
             event_count_filename,
             index=False,
             mode='a',
