@@ -24,10 +24,11 @@ class NeuralNetwork(nn.Module):
         load(self, model_path): Loads a trained model and scaler from disk.
 
     """    
-    def __init__(self, train_data):        
+    def __init__(self,n_dim=None, train_data=None):        
         super(NeuralNetwork, self).__init__()
 
-        n_dim = train_data.shape[1]
+        if n_dim is None:
+            n_dim = train_data.shape[1]
 
         self.fc1 = nn.Linear(n_dim, 100)
         self.fc2 = nn.Linear(100, 100)

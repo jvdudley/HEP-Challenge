@@ -42,10 +42,11 @@ class NeuralNetwork:
 
     """
 
-    def __init__(self, train_data):
+    def __init__(self, n_dim=None, train_data=None):
         self.model = Sequential()
 
-        n_dim = train_data.shape[1]
+        if n_dim is None:
+            n_dim = train_data.shape[1]
 
         self.model.add(Dense(100, input_dim=n_dim, activation="relu"))
         self.model.add(Dense(100, activation="relu"))
