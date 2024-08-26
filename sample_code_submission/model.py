@@ -12,6 +12,7 @@ TORCH = False
 
 import numpy as np
 import os
+from time import time
 import pandas as pd
 from sklearn.model_selection import train_test_split as sk_train_test_split
 
@@ -325,7 +326,8 @@ class Model:
 
         print("Test Results: ", result)
 
-        # TMP_RESULT_FILE = f'{PREFIX}_{len(test_data)}.csv'
+        # save the event counts with filename {number of events}_{time}.csv
+        tmp_filename = os.path.join(self.counts_dir, f'{len(test_data)}_{int(time())}.csv')
         pd.DataFrame(result, index=[0]).assign(counts=len(test_data)).to_csv(
             os.path.join(self.counts_dir, f'{len(test_data)}.csv'),
             index=False,
