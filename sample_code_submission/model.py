@@ -329,12 +329,12 @@ class Model:
         print("Test Results: ", result)
 
         # save the event counts with filename {number of events}_{time}.csv
-        tmp_filename = os.path.join(self.counts_dir, f'{len(test_data)}_{int(time())}.csv')
+        event_count_filename = os.path.join(self.counts_dir, f'{len(test_data)}_{int(time())}.csv')
         pd.DataFrame(result, index=[0]).assign(counts=len(test_data)).to_csv(
-            os.path.join(self.counts_dir, f'{len(test_data)}.csv'),
+            event_count_filename,
             index=False,
             mode='a',
-            header=not os.path.exists(os.path.join(self.counts_dir, f'{len(test_data)}.csv')),
+            header=not os.path.exists(event_count_filename),
         )
 
         return result
