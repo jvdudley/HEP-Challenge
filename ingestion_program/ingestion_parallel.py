@@ -99,31 +99,38 @@ def _process_combination(arrays, test_settings, initial_seed, combination):
 
             random_state = np.random.RandomState(seed)
 
+            to_save = {}
             if dict_systematics["tes"]:
                 tes = np.clip(random_state.normal(loc=1.0, scale=0.001), a_min=0.99, a_max=1.01)
+                to_save["tes"] = tes
             else:
                 tes = 1.0
             if dict_systematics["jes"]:
                 jes = np.clip(random_state.normal(loc=1.0, scale=0.001), a_min=0.99, a_max=1.01)
+                to_save["jes"] = jes
             else:
                 jes = 1.0
             if dict_systematics["soft_met"]:
                 soft_met = np.clip(random_state.lognormal(mean=0.0, sigma=1.0), a_min=0.0, a_max=5.0)
+                to_save["soft_met"] = soft_met
             else:
                 soft_met = 0.0
 
             if dict_systematics["ttbar_scale"]:
                 ttbar_scale = np.clip(random_state.normal(loc=1.0, scale=0.02), a_min=0.8, a_max=1.2)
+                to_save["ttbar_scale"] = ttbar_scale
             else:
                 ttbar_scale = None
 
             if dict_systematics["diboson_scale"]:
                 diboson_scale = np.clip(random_state.normal(loc=1.0, scale=0.25), a_min=0.0, a_max=2.0)
+                to_save["diboson_scale"] = diboson_scale
             else:
                 diboson_scale = None
 
             if dict_systematics["bkg_scale"]:
                 bkg_scale = np.clip(random_state.normal(loc=1.0, scale=0.001), a_min=0.99, a_max=1.01)
+                to_save["bkg_scale"] = bkg_scale
             else:
                 bkg_scale = None
 
@@ -141,7 +148,7 @@ def _process_combination(arrays, test_settings, initial_seed, combination):
             # print(f"[*] Predicting process with seed {seed}")
             predicted_dict = {}
             # Call predict method of the model that was passed to the worker
-            predicted_dict = _model.predict(test_set)
+            predicted_dict = _model.predict(test_set, to_save=to_save)
             predicted_dict["test_set_index"] = test_set_index
 
             print(
