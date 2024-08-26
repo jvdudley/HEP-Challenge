@@ -81,6 +81,9 @@ class Model:
         self.get_train_set = get_train_set
         self.systematics = systematics
 
+        self.counts_dir = os.path.join(current_file, input("Enter the directory for the event counts files: "))
+        os.makedirs(self.counts_dir, exist_ok=True)
+
         self.re_train = True
 
         if XGBOOST:
@@ -318,12 +321,12 @@ class Model:
 
         print("Test Results: ", result)
 
-        TMP_RESULT_FILE = f'num_events_{len(test_data)}.csv'
-        pd.DataFrame(result, index=[0]).to_csv(
-            os.path.join(current_file, TMP_RESULT_FILE),
+        # TMP_RESULT_FILE = f'{PREFIX}_{len(test_data)}.csv'
+        pd.DataFrame(result, index=[0]).assign(counts=len(test_data)).to_csv(
+            os.path.join(self.counts_dir, f'{len(test_data)}.csv'),
             index=False,
             mode='a',
-            header=not os.path.exists(os.path.join(current_file, TMP_RESULT_FILE)),
+            header=not os.path.exists(os.path.join(self.counts_dir, f'{len(test_data)}.csv')),
         )
 
         return result
