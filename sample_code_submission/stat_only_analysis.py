@@ -49,7 +49,19 @@ class StatOnlyAnalysis:
         self.background_variance = None
         # stat_only argument is only there for compatibility with the old code
     
-    def nominal_histograms(self, bins=None, apply_syst=False):
+    def load_histograms(self, template_file=None):
+        """
+        Load histograms from a template file.
+        """
+        if template_file is not None:
+            self.template_file = Path(template_file)
+        with np.load(self.template_file) as f:
+            self.bin_edges = f['bin_edges']
+            self.signal_hist = f['signal_hist']
+            self.background_hist = f['background_hist']
+        return None
+    
+    def nominal_histograms(self, bins=None, apply_syst=False, save=False):
         """
         Calculate the nominal histograms for signal and background events.
 
@@ -61,17 +73,8 @@ class StatOnlyAnalysis:
         - holdout_background_hist (numpy.ndarray): The histogram of background events in the holdout set.
         """
         if self.holdout_set is None:
-            # should assert file exists
-            assert self.template_file.exists(), "Must provide holdout set or existing template file."
-            with np.load(self.template_file) as f:
-                self.bin_edges = f['bin_edges']
-                self.signal_hist = f['signal_hist']
-                self.background_hist = f['background_hist']
-            # template_df = pd.read_hdf(self.template_file, 'df', 'r')
-            # self.bin_edges = template_df['bin_edges']
-            # # bin_edges is one longer than the histograms
-            # self.signal_hist = template_df['signal_hist'][:-1]
-            # self.background_hist = template_df['background_hist'][:-1]
+            assert self.template_file.exists(), "Template file does not exist."
+            self.load_histograms()
             return None
         # if bins is None, should compute optimal number of bins
         if bins is not None:
@@ -112,7 +115,7 @@ class StatOnlyAnalysis:
             weights=self.background_weights**2,
         )
         # save histograms
-        if self.template_file is not None:
+        if self.template_file is not None and save:
             # consider removing file if it already exists
             np.savez_compressed(
                 self.template_file,

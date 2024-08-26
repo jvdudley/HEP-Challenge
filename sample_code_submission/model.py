@@ -175,8 +175,6 @@ class Model:
         print_set_info("Validation", self.valid_set)
         print_set_info("Holdout (For Statistical Template)", self.holdout_set)
 
-        self.stat_analysis = StatisticalAnalysis(self.model, self.holdout_set, template_file=os.path.join(current_file, TEMPLATE_FILE))
-
         if XGBOOST:
             from boosted_decision_tree import BoostedDecisionTree
 
@@ -227,7 +225,8 @@ class Model:
                     balanced_set["data"], balanced_set["labels"], balanced_set["weights"]
                 )
             self.model.save(current_file + "/" + self.name)
-
+        
+        self.stat_analysis = StatisticalAnalysis(self.model, self.holdout_set, template_file=os.path.join(current_file, TEMPLATE_FILE))
         saved_info_file = current_file + "/saved_info_" + self.name + ".pkl"
         if os.path.exists(saved_info_file) and not STAT_ONLY:
             self.stat_analysis.load(saved_info_file) 
@@ -260,8 +259,10 @@ class Model:
 
         for name, dataset, plot_name in datasets:
             predict_and_analyze(name, dataset, plot_name, stat_only=stat_only, syst_settings=syst_settings)
-        # compute template histograms with cuts
-        self.stat_analysis.nominal_histograms(apply_syst=True)
+        
+        # assume there were no problems with fitting; use valid and holdout sets to compute template histograms
+        self.stat_analysis = StatisticalAnalysis(self.model, temp_set, template_file=os.path.join(current_file, TEMPLATE_FILE))
+        self.stat_analysis.nominal_histograms(save=True)
 
         # delete the training set to free up memory
         del self.training_set
