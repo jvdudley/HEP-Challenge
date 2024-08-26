@@ -337,7 +337,7 @@ class Model:
         # save the event counts with filename {number of events}_{time}.csv
         event_count_filename = os.path.join(self.counts_dir, f'{len(test_data)}_{int(time())}.csv')
         event_count_df = pd.DataFrame(result, index=[0]).assign(counts=len(test_data))
-        if to_save is not None:
+        if to_save is not None and len(to_save) > 0:
             event_count_df = event_count_df.assign(**to_save)
         event_count_df.to_csv(
             event_count_filename,
