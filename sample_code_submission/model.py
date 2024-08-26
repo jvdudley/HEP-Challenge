@@ -81,7 +81,11 @@ class Model:
         self.get_train_set = get_train_set
         self.systematics = systematics
 
-        self.counts_dir = os.path.join(current_file, input("Enter the directory for the event counts files: "))
+        self.counts_dir = os.path.join(
+            os.path.dirname(current_file),
+            'sample_result_submission',
+            input("Enter the directory for the event counts files: "),
+        )
         os.makedirs(self.counts_dir, exist_ok=True)
 
         self.re_train = True
