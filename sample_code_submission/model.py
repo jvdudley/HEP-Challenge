@@ -91,41 +91,6 @@ class Model:
 
         self.re_train = True
 
-        if XGBOOST:
-            from boosted_decision_tree import BoostedDecisionTree
-
-            self.model = BoostedDecisionTree()
-            module_file = current_file + "/model_XGB.json"
-            if os.path.exists(module_file):
-                self.model.load(module_file)
-                self.re_train = False  # if model is already trained, no need to retrain
-
-            self.name = "model_XGB"
-
-            print("Model is BDT")
-        elif TENSORFLOW:
-            from neural_network_TF import NeuralNetwork
-
-            module_file = current_file + "/model_tf.keras"
-            self.model = NeuralNetwork(train_data=self.training_set["data"])
-            if os.path.exists(module_file):
-                self.model.load(module_file)
-                self.re_train = False  # if model is already trained, no need to retrain
-
-            self.name = "model_tf"
-            print("Model is TF NN")
-
-        elif TORCH:
-            from neural_network_torch import NeuralNetwork
-
-            module_file = current_file + "/model_torch.pt"
-            self.model = NeuralNetwork(train_data=self.train_set["data"])
-            if os.path.exists(module_file):
-                self.model.load(module_file)
-                self.re_train = False  # if model is already trained, no need to retrain
-
-            self.name = "model_torch"
-            print("Model is Torch NN")
 
 
     def fit(self, stat_only: bool = None, syst_settings: dict[str, bool] = None):
@@ -211,6 +176,42 @@ class Model:
         print_set_info("Holdout (For Statistical Template)", self.holdout_set)
 
         self.stat_analysis = StatisticalAnalysis(self.model, self.holdout_set, template_file=os.path.join(current_file, TEMPLATE_FILE))
+
+        if XGBOOST:
+            from boosted_decision_tree import BoostedDecisionTree
+
+            self.model = BoostedDecisionTree()
+            module_file = current_file + "/model_XGB.json"
+            if os.path.exists(module_file):
+                self.model.load(module_file)
+                self.re_train = False  # if model is already trained, no need to retrain
+
+            self.name = "model_XGB"
+
+            print("Model is BDT")
+        elif TENSORFLOW:
+            from neural_network_TF import NeuralNetwork
+
+            module_file = current_file + "/model_tf.keras"
+            self.model = NeuralNetwork(train_data=self.training_set["data"])
+            if os.path.exists(module_file):
+                self.model.load(module_file)
+                self.re_train = False  # if model is already trained, no need to retrain
+
+            self.name = "model_tf"
+            print("Model is TF NN")
+
+        elif TORCH:
+            from neural_network_torch import NeuralNetwork
+
+            module_file = current_file + "/model_torch.pt"
+            self.model = NeuralNetwork(train_data=self.train_set["data"])
+            if os.path.exists(module_file):
+                self.model.load(module_file)
+                self.re_train = False  # if model is already trained, no need to retrain
+
+            self.name = "model_torch"
+            print("Model is Torch NN")
 
         if self.re_train:
 
