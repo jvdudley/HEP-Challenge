@@ -17,6 +17,14 @@ import pandas as pd
 import numpy as np
 from numpy import sin, cos, cosh, sinh, sqrt, exp
 
+def constant(data: pd.DataFrame, value) -> np.ndarray:
+    """
+    Create a 1D array of length 1 containing the given value with the same dtype as data.
+    """
+    first = data.iloc[:, 0]
+    assert (data.dtypes == first.dtype).all(), "All the columns should have the same type"
+    return np.full_like(first, value, shape=1)
+
 
 def calcul_int(data):
     """
@@ -183,10 +191,11 @@ def f_DER_deltar_had_lep(data):
     """
     Calculate the delta R between the hadron and the lepton
     """
+    pi = constant(data[['PRI_lep_eta', 'PRI_lep_phi', 'PRI_had_eta', 'PRI_had_phi']], np.pi)
     data["difference2_eta"] = (data.PRI_lep_eta - data.PRI_had_eta) ** 2
     data["difference2_phi"] = (
         np.abs(
-            np.mod(data.PRI_lep_phi - data.PRI_had_phi + 3 * np.pi, 2 * np.pi) - np.pi
+            np.mod(data.PRI_lep_phi - data.PRI_had_phi + 3 * pi, 2 * pi) - pi,
         )
     ) ** 2
     data["DER_deltar_had_lep"] = sqrt(data.difference2_eta + data.difference2_phi)
@@ -261,7 +270,7 @@ def f_DER_met_phi_centrality(data):
     data["DER_met_phi_centrality"] = data.num / (data.denum + (data.denum == 0)) * (
         data.denum != 0
     ) - 25 * (data.denum == 0)
-    epsilon = 0.0001
+    epsilon = constant(data[['PRI_met_phi', 'PRI_lep_phi', 'PRI_had_phi']], 0.0001)
     mask = data.denum == 0
 
     data.loc[mask, "A"] = A(
@@ -292,7 +301,7 @@ def f_DER_lep_eta_centrality(data):
     data["difference"] = (data.PRI_jet_leading_eta - data.PRI_jet_subleading_eta) ** 2
     data["moyenne"] = (data.PRI_jet_leading_eta + data.PRI_jet_subleading_eta) / 2
     
-    epsilon = 0.0001
+    epsilon = constant(data[['PRI_jet_leading_eta', 'PRI_jet_subleading_eta', 'PRI_lep_eta', 'PRI_n_jets']], 0.0001)
     mask = data["difference"] == 0.0
 
     data["DER_lep_eta_centrality"] = exp(
