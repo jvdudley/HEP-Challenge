@@ -320,7 +320,7 @@ class Model:
                 'p16': 1.,
                 'p84': 1.,
             }
-        test_data = test_set["data"]
+        test_data = test_set["data"].astype(np.float32)
         test_weights = test_set["weights"]
 
         predictions = self.model.predict(test_data)
