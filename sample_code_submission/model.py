@@ -83,12 +83,16 @@ class Model:
         self.get_train_set = get_train_set
         self.systematics = systematics
 
-        self.counts_dir = os.path.join(
-            os.path.dirname(current_file),
-            'sample_result_submission',
-            input("Enter the directory for the event counts files: "),
-        )
-        os.makedirs(self.counts_dir, exist_ok=True)
+        counts_dir = input("Enter the directory for the event counts files: ")
+        if counts_dir == '':
+            self.counts_dir = None
+        else:
+            self.counts_dir = os.path.join(
+                os.path.dirname(current_file),
+                'sample_result_submission',
+                counts_dir,
+            )
+            os.makedirs(self.counts_dir, exist_ok=True)
 
         self.re_train = True
 
@@ -334,6 +338,8 @@ class Model:
 
         print("Test Results: ", result)
 
+        if self.counts_dir is None:
+            return result
         # save the event counts with filename {number of events}_{time}.csv
         event_count_filename = os.path.join(self.counts_dir, f'{len(test_data)}_{int(time())}.csv')
         event_count_df = pd.DataFrame(result, index=[0]).assign(counts=len(test_data))
