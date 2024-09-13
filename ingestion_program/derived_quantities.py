@@ -21,10 +21,9 @@ def constant(data: pd.DataFrame, value) -> np.ndarray:
     """
     Create a 1D array of length 1 containing the given value with the same dtype as data.
     """
-    # first = data.iloc[:, 0]
-    # assert (data.dtypes == first.dtype).all(), "All the columns should have the same type"
-    # return np.full_like(first, value, shape=1)
-    return np.array([value], dtype=np.float32)
+    first = data.iloc[:, 0]
+    assert (data.dtypes == first.dtype).all(), "All the columns should have the same type"
+    return np.full_like(first, value, shape=1)
 
 
 def calcul_int(data):
