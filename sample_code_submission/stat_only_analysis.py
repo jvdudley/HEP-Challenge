@@ -6,6 +6,8 @@ from pathlib import Path
 from iminuit import Minuit
 import matplotlib.pyplot as plt
 import pandas as pd
+
+from scipy.optimize import minimize
 from tqdm import tqdm
 
 
@@ -209,6 +211,11 @@ class StatOnlyAnalysis:
             self.nominal_histograms()
         # compute observed histogram
         observed_hist, _ = np.histogram(scores, bins=self.bin_edges, weights=weights)
+        # minimize NLL
+        optres = minimize(NLL, [1], (observed_hist, self.signal_hist, self.background_hist))
+        print(optres, optres.keys(), optres.x, optres.hess_inv)
+        # hess_inv is roughly the square of sigma
+
         # compute negative log likelihoods
         NLL_values = NLL(mu_values, observed_hist, self.signal_hist, self.background_hist)
         # [
