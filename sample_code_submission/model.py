@@ -83,7 +83,7 @@ class Model:
         self.get_train_set = get_train_set
         self.systematics = systematics
 
-        counts_dir = input("Enter the directory for the event counts files: ")
+        counts_dir = '' # input("Enter the directory for the event counts files: ")
         if counts_dir == '':
             self.counts_dir = None
         else:
