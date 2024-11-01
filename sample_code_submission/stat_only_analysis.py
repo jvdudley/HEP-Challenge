@@ -88,7 +88,9 @@ class StatOnlyAnalysis:
             # apply systematics
             holdout_syst = systematics(self.holdout_set) if apply_syst else self.holdout_set
             # compute scores
+            print('computing scores in stat_analysis.nominal_histograms')
             holdout_scores = self.model.predict(holdout_syst['data'])
+            print('scores computed')
             self.signal_scores = holdout_scores[holdout_syst['labels'] == 1]
             self.background_scores = holdout_scores[holdout_syst['labels'] == 0]
             self.signal_weights = holdout_syst['weights'][holdout_syst['labels'] == 1]

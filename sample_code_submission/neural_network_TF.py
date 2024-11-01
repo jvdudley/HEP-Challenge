@@ -3,8 +3,12 @@ import pandas as pd
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense
 from tensorflow.keras.models import load_model
+from tensorflow.keras.utils import Sequence
 from sklearn.preprocessing import StandardScaler
 import pickle
+
+from tensorflow.data import Dataset
+from tensorflow.keras.backend import clear_session
 
 PREDICT_BATCH_SIZE = 2**20
 GPU_ID = -1
@@ -24,6 +28,19 @@ if gpus:
         raise RuntimeError(e) # for now just raise the error and exit
         # Memory growth must be set before GPUs have been initialized
         print(e)
+
+# Data generator
+class DataGenerator(Sequence):
+    def __init__(self, data, batch_size):
+        self.data = data
+        self.batch_size = batch_size
+
+    def __len__(self):
+        return int(np.ceil(len(self.data) / self.batch_size))
+
+    def __getitem__(self, index):
+        batch_data = self.data[index * self.batch_size:(index + 1) * self.batch_size]
+        return batch_data
 
 class NeuralNetwork:
     """
@@ -86,8 +103,19 @@ class NeuralNetwork:
             numpy.ndarray: The predicted output labels.
 
         """
+        print('test_data.shape in NeuralNetwork.predict', test_data.shape)
+        print('type(test_data)', type(test_data))
         test_data = self.scaler.transform(test_data)
-        return self.model.predict(test_data, batch_size=batch_size, verbose=verbose).flatten().ravel()
+        print('type(test_data) after transform', type(test_data))
+        # test_data = Dataset.from_tensor(test_data)
+
+        # Create data generator
+        data_gen = DataGenerator(test_data, PREDICT_BATCH_SIZE)
+
+        # from IPython import embed;embed()  # fmt: skip
+        result = self.model.predict(data_gen, verbose=verbose).flatten().ravel() # test_data, batch_size=batch_size
+        print(f'Done. result.shape: {result.shape}')
+        return result
     
     def save(self, model_name):
         """

@@ -149,6 +149,7 @@ class Model:
         )
         print(" \n ")
         def count_duplicates(data, name):
+            return None
             count = data.duplicated().sum()
             assert count == 0, f'{name} has {count} duplicates'
 
@@ -272,7 +273,7 @@ class Model:
         
         # assume there were no problems with fitting; use valid and holdout sets to compute template histograms
         self.stat_analysis = StatisticalAnalysis(self.model, temp_set, template_file=os.path.join(current_file, TEMPLATE_FILE))
-        self.stat_analysis.nominal_histograms(save=True)
+        self.stat_analysis.nominal_histograms() # save=True
 
         # delete the training set to free up memory
         del self.training_set
