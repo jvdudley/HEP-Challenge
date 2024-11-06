@@ -279,7 +279,7 @@ class Model:
         del self.training_set
         del self.valid_set
         del self.holdout_set
-        del self.stat_analysis.holdout_set
+        self.stat_analysis.del_holdout_set()
 
     def balance_set(self):
         balanced_set = self.training_set.copy()

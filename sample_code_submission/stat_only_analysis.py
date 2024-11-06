@@ -50,6 +50,15 @@ class StatOnlyAnalysis:
         self.signal_variance = None
         self.background_variance = None
         # stat_only argument is only there for compatibility with the old code
+
+    def del_holdout_set(self):
+        """
+        Delete the holdout set.
+        """
+        assert self.signal_hist is not None, "Must compute nominal histograms before deleting holdout set."
+        self.holdout_set = None
+        self.holdout_syst_applied = None
+        return None
     
     def load_histograms(self, template_file=None):
         """
