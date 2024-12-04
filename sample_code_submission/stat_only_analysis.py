@@ -293,7 +293,9 @@ class StatOnlyAnalysis:
         mu_hat, p16, p84 = self.estimate_mu(scores, weights, mu_range=mu_range, mu_steps=10**3, epsilon=epsilon, plot=plot)
         delta_mu_hat = p84 - p16
         mu_range = (mu_hat - delta_mu_hat, mu_hat + delta_mu_hat)
-        mu_hat, p16, p84 = self.estimate_mu(scores, weights, mu_range=mu_range, mu_steps=10**4, epsilon=epsilon, plot=f'{plot}: mu final')
+        if plot is not None:
+            plot = plot + ': mu final'
+        mu_hat, p16, p84 = self.estimate_mu(scores, weights, mu_range=mu_range, mu_steps=10**4, epsilon=epsilon, plot=plot)
         return {
             'mu_hat': mu_hat,
             'delta_mu_hat': p84 - p16,
