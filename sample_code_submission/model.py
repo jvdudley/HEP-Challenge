@@ -246,7 +246,7 @@ class Model:
             self.stat_analysis.save(saved_info_file)
 
         def predict_and_analyze(dataset_name, data_set, fig_name, stat_only, syst_settings):
-            score = self.model.predict(data_set["data"])
+            score = self.model.predict(data_set["data"], verbose=0)
             results = self.stat_analysis.compute_mu(
                 score,
                 data_set["weights"],
