@@ -103,10 +103,12 @@ class NeuralNetwork:
             numpy.ndarray: The predicted output labels.
 
         """
-        print('test_data.shape in NeuralNetwork.predict', test_data.shape)
-        print('type(test_data)', type(test_data))
+        if verbose != 'auto' and verbose > 0:
+            print('test_data.shape in NeuralNetwork.predict', test_data.shape)
+            print('type(test_data)', type(test_data))
         test_data = self.scaler.transform(test_data)
-        print('type(test_data) after transform', type(test_data))
+        if verbose != 'auto' and verbose > 0:
+            print('type(test_data) after transform', type(test_data))
         # test_data = Dataset.from_tensor(test_data)
 
         # Create data generator
@@ -114,7 +116,8 @@ class NeuralNetwork:
 
         # from IPython import embed;embed()  # fmt: skip
         result = self.model.predict(data_gen, verbose=verbose).flatten().ravel() # test_data, batch_size=batch_size
-        print(f'Done. result.shape: {result.shape}')
+        if verbose != 'auto' and verbose > 0:
+            print(f'Done. result.shape: {result.shape}')
         return result
     
     def save(self, model_name):

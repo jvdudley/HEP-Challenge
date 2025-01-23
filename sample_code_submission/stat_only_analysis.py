@@ -197,7 +197,7 @@ class StatOnlyAnalysis:
             plt.show()
         return results
     
-    def estimate_mu(self, scores, weights=None, mu_range=None, mu_steps=None, epsilon=None, plot=False):
+    def estimate_mu(self, scores, weights=None, mu_range=None, mu_steps=None, epsilon=None, plot=False, verbose=False):
         """
         Estimate mu by scanning the likelihood.
         """
@@ -224,7 +224,8 @@ class StatOnlyAnalysis:
         observed_hist, _ = np.histogram(scores, bins=self.bin_edges, weights=weights)
         # minimize NLL
         optres = minimize(NLL, [1], (observed_hist, self.signal_hist, self.background_hist))
-        print(optres, optres.keys(), optres.x, optres.hess_inv)
+        if verbose:
+            print(optres, optres.keys(), optres.x, optres.hess_inv)
         # hess_inv is roughly the square of sigma
 
         # compute negative log likelihoods
@@ -293,7 +294,9 @@ class StatOnlyAnalysis:
         mu_hat, p16, p84 = self.estimate_mu(scores, weights, mu_range=mu_range, mu_steps=10**3, epsilon=epsilon, plot=plot)
         delta_mu_hat = p84 - p16
         mu_range = (mu_hat - delta_mu_hat, mu_hat + delta_mu_hat)
-        mu_hat, p16, p84 = self.estimate_mu(scores, weights, mu_range=mu_range, mu_steps=10**4, epsilon=epsilon, plot=f'{plot}: mu final')
+        if plot is not None:
+            plot = f'{plot}: mu final'
+        mu_hat, p16, p84 = self.estimate_mu(scores, weights, mu_range=mu_range, mu_steps=10**4, epsilon=epsilon, plot=plot)
         return {
             'mu_hat': mu_hat,
             'delta_mu_hat': p84 - p16,

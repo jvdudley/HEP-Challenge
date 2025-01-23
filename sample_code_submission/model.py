@@ -328,7 +328,7 @@ class Model:
         test_data = test_set["data"].astype(np.float32)
         test_weights = test_set["weights"]
 
-        predictions = self.model.predict(test_data)
+        predictions = self.model.predict(test_data, verbose=0)
 
         result = self.stat_analysis.compute_mu(
             predictions,
